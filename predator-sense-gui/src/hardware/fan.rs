@@ -168,20 +168,6 @@ pub fn fan_curve_pct(temp_c: f64, steps: &[u8; 6]) -> u8 {
     steps[5]
 }
 
-/// Read current CPU/GPU fan PWM as percentage (0-100), if available.
-pub fn get_pwm_percent() -> Option<(u8, u8)> {
-    let cpu: u16 = crate::hardware::helper::read(HelperAction::PwmCpuRead)?
-        .parse()
-        .ok()?;
-    let gpu: u16 = crate::hardware::helper::read(HelperAction::PwmGpuRead)?
-        .parse()
-        .ok()?;
-    Some((
-        ((cpu * PERCENT_MAX) / PWM_VALUE_MAX) as u8,
-        ((gpu * PERCENT_MAX) / PWM_VALUE_MAX) as u8,
-    ))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

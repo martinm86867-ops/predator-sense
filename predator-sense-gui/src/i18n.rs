@@ -648,6 +648,7 @@ fn t_pt(key: &str) -> &str {
         "module_status_needs_install" => "Não instalado",
         "module_status_needs_load" => "Compilado, não carregado",
         "module_status_missing_deps" => "Dependências faltando",
+        "cooling_nav" => "Resfriamento",
         _ => key,
     }
 }
@@ -1238,6 +1239,7 @@ fn t_en(key: &str) -> &str {
         "module_status_needs_install" => "Not installed",
         "module_status_needs_load" => "Compiled, not loaded",
         "module_status_missing_deps" => "Missing dependencies",
+        "cooling_nav" => "Cooling",
         _ => key,
     }
 }
@@ -1828,6 +1830,7 @@ fn t_es(key: &str) -> &str {
         "module_status_needs_install" => "No instalado",
         "module_status_needs_load" => "Compilado, no cargado",
         "module_status_missing_deps" => "Dependencias faltantes",
+        "cooling_nav" => "Refrigeración",
         _ => key,
     }
 }
@@ -2417,6 +2420,7 @@ fn t_zh(key: &str) -> &str {
         "module_status_needs_install" => "未安装",
         "module_status_needs_load" => "已编译，未加载",
         "module_status_missing_deps" => "缺少依赖项",
+        "cooling_nav" => "散热",
         _ => key,
     }
 }
@@ -3006,6 +3010,7 @@ fn t_ja(key: &str) -> &str {
         "module_status_needs_install" => "未インストール",
         "module_status_needs_load" => "コンパイル済み、未読み込み",
         "module_status_missing_deps" => "依存関係が不足しています",
+        "cooling_nav" => "冷却",
         _ => key,
     }
 }
@@ -3595,6 +3600,7 @@ fn t_ru(key: &str) -> &str {
         "module_status_needs_install" => "Не установлен",
         "module_status_needs_load" => "Скомпилирован, не загружен",
         "module_status_missing_deps" => "Отсутствуют зависимости",
+        "cooling_nav" => "Охлаждение",
         _ => key,
     }
 }
@@ -4184,6 +4190,7 @@ fn t_de(key: &str) -> &str {
         "module_status_needs_install" => "Nicht installiert",
         "module_status_needs_load" => "Kompiliert, nicht geladen",
         "module_status_missing_deps" => "Fehlende Abhängigkeiten",
+        "cooling_nav" => "Kühlung",
         _ => key,
     }
 }
@@ -4774,6 +4781,7 @@ fn t_it(key: &str) -> &str {
         "eco_mode_desc" => "Limita volume e luminosità dello schermo al 40% (salva i valori attuali per ripristinarli dopo). Reimplementazione software della funzione reale Acer, distinta dal profilo termico Eco.",
         "discrete_gpu_mode" => "Solo GPU dedicata (sperimentale)",
         "discrete_gpu_mode_desc" => "SPERIMENTALE, non confermato su hardware reale: passa tra modalità ibrida (Optimus) e solo GPU dedicata. Richiede un riavvio per avere effetto, come su Windows.",
+        "cooling_nav" => "Raffreddamento",
         _ => key,
     }
 }
@@ -5364,6 +5372,7 @@ fn t_tr(key: &str) -> &str {
         "eco_mode_desc" => "Ses seviyesini ve ekran parlaklığını %40 ile sınırlar (sonra geri yüklemek için mevcut değerleri kaydeder). Gerçek Acer özelliğinin yazılım olarak yeniden uygulanmasıdır, termal Eko profilinden farklıdır.",
         "discrete_gpu_mode" => "Yalnızca ayrık GPU (deneysel)",
         "discrete_gpu_mode_desc" => "DENEYSEL, gerçek donanımda doğrulanmadı: hibrit (Optimus) ile yalnızca ayrık GPU modu arasında geçiş yapar. Windows'ta olduğu gibi, etkili olması için yeniden başlatma gerektirir.",
+        "cooling_nav" => "Soğutma",
         _ => key,
     }
 }

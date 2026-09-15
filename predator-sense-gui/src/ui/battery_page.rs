@@ -397,8 +397,9 @@ fn draw_battery_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, pct: u32, charg
 
     // Background ring
     cr.set_line_width(10.0);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
     cr.set_dash(&[6.0, 3.0], 0.0);
-    cr.set_source_rgba(0.13, 0.13, 0.13, 1.0);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
     cr.arc(cx, cy, r, 0.0, 2.0 * PI);
     let _ = cr.stroke();
 
@@ -444,12 +445,12 @@ fn draw_charge_graph(cr: &gtk4::cairo::Context, w: f64, h: f64, history: &VecDeq
     let gw = w - m * 2.0;
     let gh = h - m * 2.0;
 
-    cr.set_source_rgba(0.05, 0.05, 0.05, 1.0);
+    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 
     // Grid
-    cr.set_source_rgba(0.15, 0.15, 0.15, 0.5);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.05);
     cr.set_line_width(0.5);
     for i in 0..=4 {
         let y = m + gh * (i as f64 / 4.0);

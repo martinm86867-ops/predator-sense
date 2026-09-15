@@ -20,10 +20,10 @@ struct GpuState {
 
 pub fn build() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    page.set_margin_top(14);
-    page.set_margin_bottom(10);
-    page.set_margin_start(20);
-    page.set_margin_end(20);
+    page.set_margin_top(8);
+    page.set_margin_bottom(8);
+    page.set_margin_start(0);
+    page.set_margin_end(0);
 
     // No NVIDIA GPU detected: show a clear note instead of empty/zero gauges.
     if !crate::hardware::capabilities::get().nvidia_gpu {
@@ -188,9 +188,12 @@ pub fn build() -> gtk::Box {
 
     let pl_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, min_w, max_w, 5.0);
     pl_scale.set_value(cur_w);
-    pl_scale.set_sensitive(m0.power_limit_supported());
+    let supported = m0.power_limit_supported();
+    pl_scale.set_sensitive(supported);
     pl_scale.set_hexpand(true);
-    pl_scale.add_css_class("accent-scale");
+    if supported {
+        pl_scale.add_css_class("accent-scale");
+    }
     pl_box.append(&pl_scale);
 
     // Full failure text (the helper reports the driver's own diagnostic
@@ -260,7 +263,6 @@ pub fn build() -> gtk::Box {
                 20.0,
                 100.0,
                 crate::ui::brand_theme::accent().bright,
-                "°C",
             );
         });
     }
@@ -275,7 +277,6 @@ pub fn build() -> gtk::Box {
                 0.0,
                 100.0,
                 (0.0, 0.9, 0.5),
-                "%",
             );
         });
     }
@@ -338,7 +339,7 @@ pub fn build() -> gtk::Box {
     let s = state.clone();
     let w = all_widgets;
     let page_c = page.clone();
-    glib::timeout_add_seconds_local(2, move || {
+    glib::timeout_add_seconds_local(3, move || {
         if !crate::app_state::is_window_visible() || !page_c.is_mapped() {
             return glib::ControlFlow::Continue;
         }
@@ -444,7 +445,13 @@ fn update(state: &Rc<RefCell<GpuState>>, w: &AllWidgets) {
         };
         w.power_scale.set_range(min_w, max_w);
         w.power_scale.set_value(current_w);
-        w.power_scale.set_sensitive(m.power_limit_supported());
+        let supported = m.power_limit_supported();
+        w.power_scale.set_sensitive(supported);
+        if supported {
+            w.power_scale.add_css_class("accent-scale");
+        } else {
+            w.power_scale.remove_css_class("accent-scale");
+        }
         w.power_value.set_text(&format!("{current_w:.0} W"));
         if !m.power_limit_supported() {
             w.power_error
@@ -552,7 +559,7 @@ fn draw_gauge_arc(cr: &gtk4::cairo::Context, w: f64, h: f64, fraction: f64) {
     // Background ring
     cr.set_line_width(5.0);
     cr.set_dash(&[4.0, 2.0], 0.0);
-    cr.set_source_rgba(0.13, 0.13, 0.13, 1.0);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
     cr.arc(cx, cy, r, 0.0, 2.0 * PI);
     let _ = cr.stroke();
 
@@ -598,7 +605,6 @@ fn draw_graph(
     min: f64,
     max: f64,
     color: (f64, f64, f64),
-    _unit: &str,
 ) {
     let m = 4.0;
     let gw = w - m * 2.0;
@@ -606,12 +612,12 @@ fn draw_graph(
     let range = max - min;
 
     // Background
-    cr.set_source_rgba(0.05, 0.05, 0.05, 1.0);
+    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 
     // Grid
-    cr.set_source_rgba(0.15, 0.15, 0.15, 0.5);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.05);
     cr.set_line_width(0.5);
     cr.set_dash(&[], 0.0);
     for i in 0..=4 {

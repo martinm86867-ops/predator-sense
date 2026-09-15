@@ -145,18 +145,34 @@ pub fn build(sensor_data: &SensorData) -> gtk::Box {
         let name_l = gtk::Label::new(Some(label));
         name_l.add_css_class("gauge-label");
         name_l.set_halign(gtk::Align::Start);
-        let value_l = gtk::Label::new(Some(
-            &temp
-                .map(|t| format!("{}°", t as i32))
-                .unwrap_or("--°".into()),
-        ));
+        // Value is color-coded by health so a glance at the number alone
+        // already says normal/warm/hot - green/amber/red.
+        let value_l = gtk::Label::new(None);
         value_l.add_css_class("monitor-temp-big");
         value_l.set_halign(gtk::Align::Start);
+        match temp {
+            Some(t) => {
+                let hex = gauge_widget::temp_color_hex(t);
+                value_l.set_markup(&format!(
+                    "<span foreground=\"{hex}\">{}°</span>",
+                    t as i32
+                ));
+            }
+            None => {
+                value_l.set_markup("<span foreground=\"#8b95a3\">--°</span>");
+            }
+        }
         info.append(&name_l);
         info.append(&value_l);
 
-        // Right: the ring alone, no text/icon inside it.
-        let ring = gauge_widget::create_bare_ring(temp, 100.0, 110);
+        // Right: the ring alone, no text/icon inside it - same health color.
+        let ring = gauge_widget::create_bare_ring(
+            temp,
+            100.0,
+            110,
+            temp.map(gauge_widget::temp_color)
+                .unwrap_or((0.55, 0.58, 0.62)),
+        );
 
         card.content.append(&info);
         card.content.append(&ring);

@@ -10,9 +10,8 @@ use crate::config;
 use crate::hardware::{rgb, sensors, setup};
 use crate::tray::TrayManager;
 use crate::ui::{
-    ai_page, background, battery_page, dashboard_page, drivers_page, fan_control_page, fan_page,
-    gpu_page, monitor_page, network_page, rgb_page, setup_page, temperatures_page, tools_page,
-    usage_page,
+    ai_page, background, battery_page, cooling_page, dashboard_page, drivers_page, monitor_page,
+    network_page, rgb_page, setup_page, temperatures_page, tools_page, usage_page,
 };
 
 thread_local! {
@@ -453,58 +452,7 @@ fn build_main_ui(app: &adw::Application, window: &gtk::ApplicationWindow) {
         });
     }
 
-    // Wrap in overlay with neon edge bars drawn on top
-    let root_overlay = gtk::Overlay::new();
-    root_overlay.set_child(Some(&main_content));
-
-    // Two slim edge-hugging DrawingAreas instead of one full-window overlay:
-    // the pulse timer below re-rasterizes whatever surface it invalidates,
-    // and at full-window size that meant a window-sized cairo software pass
-    // 5x/second forever — one of the issue #13 idle-CPU culprits. 32 px
-    // covers the 4 px core bar plus the widest glow layer (10 px outward,
-    // clipped by the window edge exactly like before, and 14 px inward), so
-    // the result is pixel-identical to the old full-window draw.
-    let pulse_phase: Rc<RefCell<f64>> = Rc::new(RefCell::new(0.0));
-    let mut neon_bars = Vec::new();
-    for left in [true, false] {
-        let bar = gtk::DrawingArea::new();
-        bar.set_content_width(32);
-        bar.set_vexpand(true);
-        bar.set_halign(if left {
-            gtk::Align::Start
-        } else {
-            gtk::Align::End
-        });
-        bar.set_can_target(false);
-        let phase = pulse_phase.clone();
-        bar.set_draw_func(move |_a, cr, w, h| {
-            draw_neon_bar(cr, w as f64, h as f64, *phase.borrow(), left);
-        });
-        root_overlay.add_overlay(&bar);
-        neon_bars.push(bar);
-    }
-
-    // Animate at ~5fps. The neon edge is a slow background pulse — full 60fps
-    // here was visually identical but burned ~30% CPU drawing layered Cairo
-    // strokes on every redraw cycle of the entire window.
-    let phase_c = pulse_phase.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
-        if !crate::app_state::is_window_visible() {
-            return glib::ControlFlow::Continue;
-        }
-        let mut p = phase_c.borrow_mut();
-        *p += 0.12;
-        if *p > 1.0 {
-            *p -= 1.0;
-        }
-        drop(p);
-        for bar in &neon_bars {
-            bar.queue_draw();
-        }
-        glib::ControlFlow::Continue
-    });
-
-    window.set_child(Some(&root_overlay));
+    window.set_child(Some(&main_content));
 }
 
 type PageBuilder = Box<dyn FnOnce() -> gtk::Widget>;
@@ -531,15 +479,9 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
     main_overlay.set_hexpand(true);
     main_overlay.set_vexpand(true);
 
-    // Background recovered from the visual-redesign POC (Claude Design
-    // canvas, 2026-09-07, our own design - discarded overall, but the user
-    // liked this specific background and asked to bring it into the real
-    // app): a near-black vertical gradient, a soft cyan glow anchored just
-    // above the top-left corner, and a faint 34px technical grid on top.
-    // This replaces the previous diagonal-stripe Cairo background - not a
-    // CSS rule, because this DrawingArea (not `.content-panel`, which turned
-    // out to be dead CSS no widget ever applied) is what actually paints
-    // behind the whole sidebar+content layout.
+    // Clean app canvas: a subtle near-black vertical gradient with a faint
+    // accent wash anchored toward the top-left, painted behind the sidebar
+    // and content layout (the content pages themselves are transparent).
     let stripe_bg = gtk::DrawingArea::new();
     stripe_bg.set_hexpand(true);
     stripe_bg.set_vexpand(true);
@@ -547,44 +489,25 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
         let wf = w as f64;
         let hf = h as f64;
 
-        // Base vertical gradient: #060a0e at top to #05070a at bottom.
+        // Base vertical gradient: #0b0e13 at top to #0a0d11 at bottom.
         let base = gtk4::cairo::LinearGradient::new(0.0, 0.0, 0.0, hf);
-        base.add_color_stop_rgb(0.0, 6.0 / 255.0, 10.0 / 255.0, 14.0 / 255.0);
-        base.add_color_stop_rgb(1.0, 5.0 / 255.0, 7.0 / 255.0, 10.0 / 255.0);
+        base.add_color_stop_rgb(0.0, 11.0 / 255.0, 14.0 / 255.0, 19.0 / 255.0);
+        base.add_color_stop_rgb(1.0, 10.0 / 255.0, 13.0 / 255.0, 17.0 / 255.0);
         let _ = cr.set_source(&base);
         cr.rectangle(0.0, 0.0, wf, hf);
         let _ = cr.fill();
 
-        // Soft cyan glow centered just above the top-left corner (18%, -8%
-        // of the panel), fading out by 60% of its own radius.
-        let cx = wf * 0.18;
-        let cy = hf * -0.08;
-        let radius = wf.max(hf) * 0.85;
-        let glow = gtk4::cairo::RadialGradient::new(cx, cy, 0.0, cx, cy, radius);
-        glow.add_color_stop_rgba(0.0, 0.0, 0.831, 0.941, 0.07);
-        glow.add_color_stop_rgba(0.6, 0.0, 0.831, 0.941, 0.0);
-        glow.add_color_stop_rgba(1.0, 0.0, 0.831, 0.941, 0.0);
-        let _ = cr.set_source(&glow);
+        // Faint accent wash, barely there - keeps the brand color without a glow.
+        let (r, g, b) = crate::ui::brand_theme::accent().bright;
+        let cx = wf * 0.15;
+        let cy = 0.0;
+        let radius = wf.max(hf) * 0.7;
+        let wash = gtk4::cairo::RadialGradient::new(cx, cy, 0.0, cx, cy, radius);
+        wash.add_color_stop_rgba(0.0, r, g, b, 0.035);
+        wash.add_color_stop_rgba(1.0, r, g, b, 0.0);
+        let _ = cr.set_source(&wash);
         cr.rectangle(0.0, 0.0, wf, hf);
         let _ = cr.fill();
-
-        // Fine 34px grid, discreet on purpose - same alpha as the POC.
-        cr.set_source_rgba(148.0 / 255.0, 177.0 / 255.0, 184.0 / 255.0, 0.05);
-        cr.set_line_width(1.0);
-        let mut x = 0.5;
-        while x < wf {
-            cr.move_to(x, 0.0);
-            cr.line_to(x, hf);
-            let _ = cr.stroke();
-            x += 34.0;
-        }
-        let mut y = 0.5;
-        while y < hf {
-            cr.move_to(0.0, y);
-            cr.line_to(wf, y);
-            let _ = cr.stroke();
-            y += 34.0;
-        }
     });
     main_overlay.set_child(Some(&stripe_bg));
 
@@ -638,16 +561,12 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
         );
         pages.insert("usage".into(), Box::new(|| usage_page::build().upcast()));
         pages.insert("lighting".into(), Box::new(|| rgb_page::build().upcast()));
-        pages.insert("fan".into(), Box::new(|| fan_page::build().upcast()));
-        pages.insert(
-            "fan_ctrl".into(),
-            Box::new(|| fan_control_page::build().upcast()),
-        );
+        // Profiles + fan control + GPU merged into one "Cooling" hub.
+        pages.insert("cooling".into(), Box::new(|| cooling_page::build().upcast()));
         pages.insert(
             "battery".into(),
             Box::new(|| battery_page::build().upcast()),
         );
-        pages.insert("gpu".into(), Box::new(|| gpu_page::build().upcast()));
         pages.insert(
             "monitor".into(),
             Box::new(|| monitor_page::build().upcast()),
@@ -687,23 +606,19 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
     }
 
     // Menu items
+    // Consolidation keeps related controls together (profiles + fans + GPU
+    // under "Cooling"), but every page stays reachable from the sidebar -
+    // the standalone monitoring pages and Drivers are first-class entries,
+    // not hidden behind a hub that a user has to know to open.
     let nav_items = vec![
         (crate::i18n::t("home_page"), "home"),
+        (crate::i18n::t("cooling_nav"), "cooling"),
         (crate::i18n::t("temperatures"), "temperatures"),
         (crate::i18n::t("usage"), "usage"),
         (crate::i18n::t("network"), "network"),
         (crate::i18n::t("lighting"), "lighting"),
-        (crate::i18n::t("perf_mode"), "fan"),
-        (crate::i18n::t("fan_control"), "fan_ctrl"),
         (crate::i18n::t("battery"), "battery"),
-        (crate::i18n::t("gpu_menu"), "gpu"),
         (crate::i18n::t("monitoring"), "monitor"),
-        // GameSync, Macros and the AI assistant used to be their own
-        // sidebar rows - moved under this one "Tools" hub (a card grid,
-        // `tools_page.rs`) once the sidebar started growing without an
-        // obvious ceiling. Their `pending` page-builder entries above are
-        // unchanged, still built lazily on first visit - only how you get
-        // to them changed.
         (crate::i18n::t("tools_nav"), "tools"),
         (crate::i18n::t("drivers_and_manuals"), "drivers"),
         (crate::i18n::t("settings"), "settings"),
@@ -756,10 +671,10 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
         })
     };
 
-    for (i, (label, page_name)) in nav_items.iter().enumerate() {
+    for (i, (label, _)) in nav_items.iter().enumerate() {
         let item_overlay = gtk::Overlay::new();
 
-        // Cairo-drawn background with clip-path
+        // Cairo-drawn rounded pill background
         let bg = gtk::DrawingArea::new();
         bg.set_size_request(sidebar_width, 40);
         let active_idx_c = active_idx.clone();
@@ -839,22 +754,27 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
     let model_name = std::fs::read_to_string("/sys/class/dmi/id/product_name")
         .unwrap_or_else(|_| "Predator".into());
 
-    // Laptop thumbnail
-    let laptop_path = find_model_photo(model_name.trim())
-        .or_else(|| find_resource("models/notebook-404.png"))
-        .or_else(|| find_resource("laptop-thumb.png"));
-    if let Some(path) = laptop_path {
-        let pic = gtk::Picture::for_filename(path);
-        pic.set_size_request(100, 66);
-        pic.set_can_shrink(true);
-        pic.set_halign(gtk::Align::Center);
-        pic.set_valign(gtk::Align::Center);
-        info_box.append(&pic);
-    }
     let model = gtk::Label::new(Some(model_name.trim()));
     model.add_css_class("info-text");
     model.set_halign(gtk::Align::Center);
     info_box.append(&model);
+
+    // Compact hardware identity instead of the old laptop thumbnail - a
+    // couple of dim CPU/GPU lines tell you more than a product photo.
+    let sys = crate::hardware::sysinfo::read_system_info();
+    for name in [sys.cpu_model.as_str(), sys.gpu_name.as_str()] {
+        if name.is_empty() {
+            continue;
+        }
+        let l = gtk::Label::new(Some(name));
+        l.add_css_class("info-text-dim");
+        l.set_halign(gtk::Align::Center);
+        l.set_wrap(true);
+        l.set_max_width_chars(22);
+        l.set_xalign(0.5);
+        l.set_justify(gtk::Justification::Center);
+        info_box.append(&l);
+    }
 
     let ver = gtk::Label::new(Some(&format!("v{} • Linux", env!("CARGO_PKG_VERSION"))));
     ver.add_css_class("info-text-dim");
@@ -918,12 +838,12 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
 
     layout.append(&sidebar);
 
-    // === CONTENT PANEL WRAPPER (polygon border + inner) ===
+    // === CONTENT PANEL WRAPPER (rounded surface + subtle border) ===
     let panel_wrapper = gtk::Overlay::new();
     panel_wrapper.set_hexpand(true);
     panel_wrapper.set_vexpand(true);
 
-    // Gradient polygon border background
+    // Rounded panel surface background
     let border_bg = gtk::DrawingArea::new();
     border_bg.set_hexpand(true);
     border_bg.set_vexpand(true);
@@ -970,23 +890,6 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
     main_overlay
 }
 
-fn find_model_photo(product_name: &str) -> Option<String> {
-    let dir = find_resource_path("models")?;
-    let entries = std::fs::read_dir(&dir).ok()?;
-    let product_lower = product_name.to_lowercase();
-    for entry in entries.flatten() {
-        let file_name = entry.file_name();
-        let name = file_name.to_string_lossy();
-        let Some(code) = name.rsplit_once('.').map(|(base, _)| base) else {
-            continue;
-        };
-        if product_lower.contains(&code.to_lowercase()) {
-            return Some(entry.path().to_string_lossy().to_string());
-        }
-    }
-    None
-}
-
 pub(crate) fn find_resource(name: &str) -> Option<String> {
     find_resource_path(name).map(|p| p.to_string_lossy().to_string())
 }
@@ -1008,52 +911,6 @@ fn find_resource_path(name: &str) -> Option<std::path::PathBuf> {
         return Some(dev);
     }
     None
-}
-
-/// Draw pulsing cyan neon glow bars on left and right edges
-/// phase: 0.0 to 1.0, controls the pulse intensity
-/// Draw one neon edge bar (left or right) inside its own slim DrawingArea.
-/// Geometry matches the old full-window draw_neon_edges() exactly, just
-/// expressed in the slim area's local coordinates.
-fn draw_neon_bar(cr: &gtk4::cairo::Context, w: f64, h: f64, phase: f64, left: bool) {
-    // Smooth sine pulse: oscillates between 0.4 and 1.0
-    let pulse = 0.4 + 0.6 * ((phase * 2.0 * PI).sin() * 0.5 + 0.5);
-    let (r, g, b) = crate::ui::brand_theme::accent().bright;
-
-    let bar_width = 4.0;
-    let top = h * 0.10;
-    let bottom = h * 0.90;
-    let bar_h = bottom - top;
-    let radius = 5.0;
-    let x0 = if left { 0.0 } else { w - bar_width };
-
-    // Glow layers (pulsing)
-    for i in 0..5 {
-        let spread = (i as f64 + 1.0) * 4.0;
-        let alpha = (0.15 / (i as f64 + 1.0)) * pulse;
-        cr.set_source_rgba(r, g, b, alpha);
-        rounded_rect(
-            cr,
-            x0 - spread / 2.0,
-            top - spread / 2.0,
-            bar_width + spread,
-            bar_h + spread,
-            radius + spread / 2.0,
-        );
-        let _ = cr.fill();
-    }
-    // Core bar
-    cr.set_source_rgba(r, g, b, 0.5 + 0.4 * pulse);
-    rounded_rect(cr, x0, top, bar_width, bar_h, radius);
-    let _ = cr.fill();
-
-    // Subtle edge border (also pulses slightly)
-    let ex = if left { 1.0 } else { w - 1.0 };
-    cr.set_source_rgba(r, g, b, 0.15 + 0.2 * pulse);
-    cr.set_line_width(2.0);
-    cr.move_to(ex, 0.0);
-    cr.line_to(ex, h);
-    let _ = cr.stroke();
 }
 
 /// Helper: draw a rounded rectangle path
@@ -1119,20 +976,16 @@ fn queue_draw_recursive(widget: &gtk::Widget) {
     }
 }
 
-/// Draw menu item with clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px)
+/// Draw a sidebar menu item as a rounded pill: accent gradient when active,
+/// a faint translucent surface otherwise.
 fn draw_menu_item(cr: &gtk4::cairo::Context, w: f64, h: f64, is_active: bool) {
-    let cut = 10.0;
-
-    cr.move_to(cut, 0.0);
-    cr.line_to(w, 0.0);
-    cr.line_to(w, h);
-    cr.line_to(0.0, h);
-    cr.line_to(0.0, cut);
-    cr.close_path();
-
     let accent = crate::ui::brand_theme::accent();
+
+    // Full-height rounded pill.
+    rounded_rect(cr, 0.0, 0.0, w, h, h / 2.0);
+
     if is_active {
-        // Gradient bright accent -> dark accent + glow
+        // Gradient bright accent -> dark accent.
         let (br, bg, bb) = accent.bright;
         let (dr, dg, db) = accent.dark;
         let grad = gtk4::cairo::LinearGradient::new(0.0, 0.0, w, 0.0);
@@ -1141,57 +994,24 @@ fn draw_menu_item(cr: &gtk4::cairo::Context, w: f64, h: f64, is_active: bool) {
         cr.set_source(&grad).unwrap();
         let _ = cr.fill();
     } else {
-        // Fill rgba(20,20,20,0.8)
-        cr.set_source_rgba(0.078, 0.078, 0.078, 0.8);
-        let _ = cr.fill_preserve();
-
-        // Border 1px #222
-        cr.set_source_rgb(0.133, 0.133, 0.133);
-        cr.set_line_width(1.0);
-        let _ = cr.stroke();
-
-        // Left border 2px, dark accent
-        let (dr, dg, db) = accent.dark;
-        cr.set_source_rgb(dr, dg, db);
-        cr.set_line_width(2.0);
-        cr.move_to(1.0, cut);
-        cr.line_to(1.0, h);
-        let _ = cr.stroke();
+        // Faint translucent surface; hover is handled by the label's CSS.
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.035);
+        let _ = cr.fill();
     }
 }
 
-/// Draw content panel polygon gradient border
+/// Draw the content panel: a rounded surface with a subtle accent border.
 fn draw_panel_border(cr: &gtk4::cairo::Context, w: f64, h: f64) {
-    let cut = 15.0;
-
-    // Outer polygon
-    cr.move_to(cut, 0.0);
-    cr.line_to(w, 0.0);
-    cr.line_to(w, h - cut);
-    cr.line_to(w - cut, h);
-    cr.line_to(0.0, h);
-    cr.line_to(0.0, cut);
-    cr.close_path();
-
     let (r, g, b) = crate::ui::brand_theme::accent().bright;
-    let grad = gtk4::cairo::LinearGradient::new(0.0, 0.0, w, h);
-    grad.add_color_stop_rgba(0.0, r, g, b, 0.5);
-    grad.add_color_stop_rgba(0.5, r, g, b, 0.1);
-    grad.add_color_stop_rgba(1.0, 0.067, 0.067, 0.067, 1.0);
-    cr.set_source(&grad).unwrap();
-    let _ = cr.fill();
 
-    // Inner polygon (1px inset = border width)
-    let i = 1.0;
-    cr.move_to(cut + i, i);
-    cr.line_to(w - i, i);
-    cr.line_to(w - i, h - cut - i);
-    cr.line_to(w - cut - i, h - i);
-    cr.line_to(i, h - i);
-    cr.line_to(i, cut + i);
-    cr.close_path();
-    cr.set_source_rgb(0.067, 0.067, 0.067);
-    let _ = cr.fill();
+    rounded_rect(cr, 0.0, 0.0, w, h, 14.0);
+    // Panel surface: dark, slightly raised.
+    cr.set_source_rgb(0.075, 0.094, 0.122);
+    let _ = cr.fill_preserve();
+    // 1px accent-tinted border.
+    cr.set_source_rgba(r, g, b, 0.16);
+    cr.set_line_width(1.0);
+    let _ = cr.stroke();
 }
 
 /// Draw brand mark

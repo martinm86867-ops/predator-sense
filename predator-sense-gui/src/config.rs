@@ -78,14 +78,6 @@ pub struct Macro {
     pub steps: Vec<MacroStep>,
 }
 
-/// A saved lighting profile
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LightingProfile {
-    pub name: String,
-    pub config: RgbConfig,
-    pub static_zones: Option<Vec<ZoneColor>>,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZoneColor {
     pub zone: u8,
@@ -432,11 +424,6 @@ pub fn config_dir() -> PathBuf {
     base.join("predator-sense")
 }
 
-/// Get the profiles directory path
-pub fn profiles_dir() -> PathBuf {
-    config_dir().join("profiles")
-}
-
 /// Get the macros directory path
 pub fn macros_dir() -> PathBuf {
     config_dir().join("macros")
@@ -445,47 +432,7 @@ pub fn macros_dir() -> PathBuf {
 /// Ensure configuration directories exist
 pub fn ensure_dirs() {
     let _ = fs::create_dir_all(config_dir());
-    let _ = fs::create_dir_all(profiles_dir());
     let _ = fs::create_dir_all(macros_dir());
-}
-
-/// Save a lighting profile
-pub fn save_profile(profile: &LightingProfile) -> Result<(), String> {
-    ensure_dirs();
-    let path = profiles_dir().join(format!("{}.json", sanitize_filename(&profile.name)));
-    let json = serde_json::to_string_pretty(profile)
-        .map_err(|e| format!("Erro ao serializar perfil: {}", e))?;
-    fs::write(&path, json).map_err(|e| format!("Erro ao salvar perfil: {}", e))
-}
-
-/// Load a lighting profile by name
-pub fn load_profile(name: &str) -> Result<LightingProfile, String> {
-    let path = profiles_dir().join(format!("{}.json", sanitize_filename(name)));
-    let json = fs::read_to_string(&path)
-        .map_err(|e| format!("Erro ao ler perfil '{}': {}", name, e))?;
-    serde_json::from_str(&json).map_err(|e| format!("Erro ao parsear perfil: {}", e))
-}
-
-/// List all saved profiles
-pub fn list_profiles() -> Vec<String> {
-    ensure_dirs();
-    let dir = profiles_dir();
-    let entries = match fs::read_dir(&dir) {
-        Ok(e) => e,
-        Err(_) => return vec![],
-    };
-
-    entries
-        .flatten()
-        .filter_map(|entry| {
-            let name = entry.file_name().to_string_lossy().to_string();
-            if name.ends_with(".json") {
-                Some(name.trim_end_matches(".json").to_string())
-            } else {
-                None
-            }
-        })
-        .collect()
 }
 
 /// Load app config

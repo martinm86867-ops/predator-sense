@@ -323,7 +323,7 @@ fn build_keyboard_section() -> gtk::Box {
     // the WMI/ENEK5130 Lighting page's own animation timer.
     {
         let state = state.clone();
-        gtk::glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+        gtk::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
             let da = { state.borrow().keyboard_da.clone() };
             if da.root().is_none() {
                 return gtk::glib::ControlFlow::Break;
@@ -680,7 +680,7 @@ fn build_logo_section() -> gtk::Box {
     // page and on the WMI/ENEK5130 Lighting page's own preview timer.
     {
         let state = state.clone();
-        gtk::glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+        gtk::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
             if state.borrow().preview_image.root().is_none() {
                 return gtk::glib::ControlFlow::Break;
             }

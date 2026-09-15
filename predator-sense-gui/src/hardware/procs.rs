@@ -310,10 +310,8 @@ fn uid_to_name(uid: u32) -> String {
     if let Ok(c) = fs::read_to_string("/etc/passwd") {
         for line in c.lines() {
             let parts: Vec<&str> = line.split(':').collect();
-            if parts.len() >= 3 {
-                if parts[2].parse::<u32>().ok() == Some(uid) {
-                    return parts[0].to_string();
-                }
+            if parts.len() >= 3 && parts[2].parse::<u32>().ok() == Some(uid) {
+                return parts[0].to_string();
             }
         }
     }
@@ -321,14 +319,14 @@ fn uid_to_name(uid: u32) -> String {
 }
 
 pub fn top_by_cpu(processes: &[ProcessInfo], n: usize) -> Vec<ProcessInfo> {
-    let mut v: Vec<ProcessInfo> = processes.iter().cloned().collect();
+    let mut v = processes.to_vec();
     v.sort_by(|a, b| b.cpu_pct.partial_cmp(&a.cpu_pct).unwrap_or(std::cmp::Ordering::Equal));
     v.into_iter().take(n).collect()
 }
 
 pub fn top_by_mem(processes: &[ProcessInfo], n: usize) -> Vec<ProcessInfo> {
-    let mut v: Vec<ProcessInfo> = processes.iter().cloned().collect();
-    v.sort_by(|a, b| b.mem_kb.cmp(&a.mem_kb));
+    let mut v = processes.to_vec();
+    v.sort_by_key(|p| std::cmp::Reverse(p.mem_kb));
     v.into_iter().take(n).collect()
 }
 

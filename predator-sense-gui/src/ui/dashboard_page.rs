@@ -25,17 +25,8 @@ pub fn build() -> gtk::ScrolledWindow {
     hero.set_spacing(24);
     hero.set_halign(gtk::Align::Fill);
 
-    if let Some(path) = find_model_photo(&info.product_name)
-        .or_else(|| find_resource("models/notebook-404.png"))
-        .or_else(|| find_resource("laptop-thumb.png"))
-    {
-        let pic = gtk::Picture::for_filename(path);
-        pic.set_size_request(320, 200);
-        pic.set_can_shrink(true);
-        pic.set_valign(gtk::Align::Center);
-        hero.append(&pic);
-    }
-
+    // No laptop photo here - we already know what the hardware looks like.
+    // The hero is identity text; live contextual instruments live below it.
     let hero_info = gtk::Box::new(gtk::Orientation::Vertical, 6);
     hero_info.set_valign(gtk::Align::Center);
     hero_info.set_hexpand(true);
@@ -59,6 +50,9 @@ pub fn build() -> gtk::ScrolledWindow {
 
     hero.append(&hero_info);
     page.append(&hero_card.widget);
+
+    // === Live instrument cluster: color-coded readings at a glance ===
+    page.append(&build_instrument_cluster());
 
     // === Specs grid ===
     let specs_title = gtk::Label::new(Some(crate::i18n::t("dashboard_specs")));
@@ -206,7 +200,7 @@ pub fn build() -> gtk::ScrolledWindow {
             scroll.connect_map(move |_| refresh_gpu_detail(&map_label));
 
             let scroll = scroll.clone();
-            glib::timeout_add_seconds_local(2, move || {
+            glib::timeout_add_seconds_local(4, move || {
                 if scroll.is_mapped() {
                     refresh_gpu_detail(&gpu_value_label);
                 }
@@ -217,6 +211,100 @@ pub fn build() -> gtk::ScrolledWindow {
 
     scroll.set_child(Some(&page));
     scroll
+}
+
+/// Which live metric an instrument shows - determines its refresh source and
+/// health color.
+#[derive(Clone, Copy)]
+enum InstrumentKind {
+    CpuTemp,
+    GpuTemp,
+    CpuFan,
+    GpuFan,
+}
+
+/// A compact, color-coded live reading (label + big value + unit) refreshing
+/// on a timer - the "instrument cluster" the dashboard leads with, in place
+/// of the old static laptop photo.
+fn build_instrument_cluster() -> gtk::Box {
+    let row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    row.set_homogeneous(true);
+    row.set_hexpand(true);
+
+    let specs: [(&str, &str, InstrumentKind); 4] = [
+        ("CPU", "°C", InstrumentKind::CpuTemp),
+        ("GPU", "°C", InstrumentKind::GpuTemp),
+        ("CPU FAN", "RPM", InstrumentKind::CpuFan),
+        ("GPU FAN", "RPM", InstrumentKind::GpuFan),
+    ];
+
+    let mut values: Vec<(gtk::Label, InstrumentKind)> = Vec::new();
+    for (label, unit, kind) in specs {
+        let card = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        card.add_css_class("spec-card");
+        card.set_hexpand(true);
+        card.set_valign(gtk::Align::Center);
+
+        let l = gtk::Label::new(Some(label));
+        l.add_css_class("spec-title");
+        l.set_halign(gtk::Align::Start);
+
+        let v = gtk::Label::new(Some("--"));
+        v.add_css_class("monitor-temp-big");
+        v.set_halign(gtk::Align::Start);
+
+        let u = gtk::Label::new(Some(unit));
+        u.add_css_class("spec-title");
+        u.set_halign(gtk::Align::Start);
+
+        card.append(&l);
+        card.append(&v);
+        card.append(&u);
+        row.append(&card);
+        values.push((v, kind));
+    }
+
+    refresh_instruments(&values);
+
+    let row_c = row.clone();
+    glib::timeout_add_seconds_local(4, move || {
+        if row_c.is_mapped() {
+            refresh_instruments(&values);
+        }
+        glib::ControlFlow::Continue
+    });
+
+    row
+}
+
+fn refresh_instruments(values: &[(gtk::Label, InstrumentKind)]) {
+    let sensors = crate::hardware::sensors::read_all_sensors();
+    for (label, kind) in values {
+        let (text, color) = match kind {
+            InstrumentKind::CpuTemp => temp_reading(sensors.cpu_temp),
+            InstrumentKind::GpuTemp => temp_reading(sensors.gpu_temp),
+            InstrumentKind::CpuFan => fan_reading(sensors.cpu_fan_rpm),
+            InstrumentKind::GpuFan => fan_reading(sensors.gpu_fan_rpm),
+        };
+        label.set_markup(&format!("<span foreground=\"{color}\">{text}</span>"));
+    }
+}
+
+fn temp_reading(t: Option<f64>) -> (String, String) {
+    match t {
+        Some(v) => (
+            format!("{v:.0}"),
+            crate::ui::gauge_widget::temp_color_hex(v),
+        ),
+        None => ("--".to_string(), "#8b95a3".to_string()),
+    }
+}
+
+fn fan_reading(rpm: Option<u32>) -> (String, String) {
+    (
+        rpm.map(|r| r.to_string()).unwrap_or_else(|| "--".into()),
+        "#aeb7c2".to_string(),
+    )
 }
 
 fn refresh_gpu_detail(label: &gtk::Label) {
@@ -387,49 +475,6 @@ fn create_spec_card(
 
     card.append(&text);
     (faceted.widget, v)
-}
-
-/// Model-specific photos live in `resources/models/<CODE>.png`, background
-/// already stripped to transparent to match the dashboard's hero style. The
-/// file name is the model code as it appears in the DMI `product_name`
-/// (e.g. "Predator PHN16-73" -> `models/PHN16-73.png`) - matched as a
-/// case-insensitive substring so "Predator PHN16-73" and "PHN16-73" both hit
-/// the same file regardless of the "Predator "/"Nitro " prefix some DMI
-/// strings include.
-fn find_model_photo(product_name: &str) -> Option<String> {
-    let dir = find_resource_dir("models")?;
-    let entries = std::fs::read_dir(&dir).ok()?;
-    let product_lower = product_name.to_lowercase();
-    for entry in entries.flatten() {
-        let file_name = entry.file_name();
-        let name = file_name.to_string_lossy();
-        let Some(code) = name.rsplit_once('.').map(|(base, _)| base) else {
-            continue;
-        };
-        if product_lower.contains(&code.to_lowercase()) {
-            return Some(entry.path().to_string_lossy().to_string());
-        }
-    }
-    None
-}
-
-fn find_resource_dir(name: &str) -> Option<std::path::PathBuf> {
-    if let Ok(exe) = std::env::current_exe() {
-        let dir = exe.parent()?;
-        let p = dir.join("../../resources").join(name);
-        if p.is_dir() {
-            return Some(p);
-        }
-        let p = dir.join("resources").join(name);
-        if p.is_dir() {
-            return Some(p);
-        }
-    }
-    let dev = std::path::PathBuf::from(format!("/opt/predator-sense/resources/{}", name));
-    if dev.is_dir() {
-        return Some(dev);
-    }
-    None
 }
 
 fn find_resource(name: &str) -> Option<String> {

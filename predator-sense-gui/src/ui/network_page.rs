@@ -13,8 +13,6 @@ const HISTORY_SIZE: usize = 60;
 
 #[derive(Default, Clone, Copy)]
 struct NetSample {
-    rx_bytes: u64,
-    tx_bytes: u64,
     rx_kbps: f64,
     tx_kbps: f64,
 }
@@ -217,24 +215,24 @@ pub fn build() -> gtk::Box {
     // === Atualização de velocidade a cada 1s ===
     {
         let s = state.clone();
-        let dl_v = dl_value_label.clone();
-        let ul_v = ul_value_label.clone();
-        let dl_t = dl_total_label.clone();
-        let ul_t = ul_total_label.clone();
-        let peak_dl = peak_dl_label.clone();
-        let peak_ul = peak_ul_label.clone();
-        let dl_g = dl_graph.clone();
-        let ul_g = ul_graph.clone();
-        let iface_lbl = iface_label.clone();
+        let widgets = NetWidgets {
+            dl_v: dl_value_label.clone(),
+            ul_v: ul_value_label.clone(),
+            dl_t: dl_total_label.clone(),
+            ul_t: ul_total_label.clone(),
+            peak_dl: peak_dl_label.clone(),
+            peak_ul: peak_ul_label.clone(),
+            dl_graph: dl_graph.clone(),
+            ul_graph: ul_graph.clone(),
+            iface_label: iface_label.clone(),
+        };
 
         let page_c = page.clone();
         glib::timeout_add_seconds_local(2, move || {
             if !crate::app_state::is_window_visible() || !page_c.is_mapped() {
                 return glib::ControlFlow::Continue;
             }
-            update_net_stats(
-                &s, &dl_v, &ul_v, &dl_t, &ul_t, &peak_dl, &peak_ul, &dl_g, &ul_g, &iface_lbl,
-            );
+            update_net_stats(&s, &widgets);
             glib::ControlFlow::Continue
         });
     }
@@ -245,7 +243,7 @@ pub fn build() -> gtk::Box {
         let dl_da = dl_anim_da.clone();
         let ul_da = ul_anim_da.clone();
         let page_c = page.clone();
-        glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+        glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
             if !crate::app_state::is_window_visible() || !page_c.is_mapped() {
                 return glib::ControlFlow::Continue;
             }
@@ -265,18 +263,20 @@ pub fn build() -> gtk::Box {
     page
 }
 
-fn update_net_stats(
-    state: &Rc<RefCell<NetState>>,
-    dl_v: &gtk::Label,
-    ul_v: &gtk::Label,
-    dl_t: &gtk::Label,
-    ul_t: &gtk::Label,
-    peak_dl: &gtk::Label,
-    peak_ul: &gtk::Label,
-    dl_graph: &gtk::DrawingArea,
-    ul_graph: &gtk::DrawingArea,
-    iface_label: &gtk::Label,
-) {
+/// The widgets `update_net_stats` writes into each tick.
+struct NetWidgets {
+    dl_v: gtk::Label,
+    ul_v: gtk::Label,
+    dl_t: gtk::Label,
+    ul_t: gtk::Label,
+    peak_dl: gtk::Label,
+    peak_ul: gtk::Label,
+    dl_graph: gtk::DrawingArea,
+    ul_graph: gtk::DrawingArea,
+    iface_label: gtk::Label,
+}
+
+fn update_net_stats(state: &Rc<RefCell<NetState>>, w: &NetWidgets) {
     let iface = state.borrow().iface.clone();
     let active_iface = detect_active_interface().unwrap_or_default();
     let iface = if active_iface.is_empty() {
@@ -298,7 +298,7 @@ fn update_net_stats(
         s.ul_history.clear();
         s.peak_dl = 0.0;
         s.peak_ul = 0.0;
-        iface_label.set_text(&format_iface_label(&iface));
+        w.iface_label.set_text(&format_iface_label(&iface));
     }
 
     let (rx, tx) = read_bytes(&iface);
@@ -319,8 +319,6 @@ fn update_net_stats(
     };
 
     s.current = NetSample {
-        rx_bytes: rx,
-        tx_bytes: tx,
         rx_kbps: dl_kbps,
         tx_kbps: ul_kbps,
     };
@@ -351,15 +349,15 @@ fn update_net_stats(
 
     drop(s);
 
-    dl_v.set_text(&format_speed(dl_kbps));
-    ul_v.set_text(&format_speed(ul_kbps));
-    dl_t.set_text(&format_bytes(total_rx));
-    ul_t.set_text(&format_bytes(total_tx));
-    peak_dl.set_text(&format_speed(peak_d));
-    peak_ul.set_text(&format_speed(peak_u));
+    w.dl_v.set_text(&format_speed(dl_kbps));
+    w.ul_v.set_text(&format_speed(ul_kbps));
+    w.dl_t.set_text(&format_bytes(total_rx));
+    w.ul_t.set_text(&format_bytes(total_tx));
+    w.peak_dl.set_text(&format_speed(peak_d));
+    w.peak_ul.set_text(&format_speed(peak_u));
 
-    dl_graph.queue_draw();
-    ul_graph.queue_draw();
+    w.dl_graph.queue_draw();
+    w.ul_graph.queue_draw();
 }
 
 fn create_speed_card(
@@ -544,11 +542,11 @@ fn draw_net_graph(
     let gw = w - m * 2.0;
     let gh = h - m * 2.0;
 
-    cr.set_source_rgba(0.05, 0.05, 0.05, 1.0);
+    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 
-    cr.set_source_rgba(0.15, 0.15, 0.15, 0.5);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.05);
     cr.set_line_width(0.5);
     cr.set_dash(&[], 0.0);
     for i in 0..=4 {

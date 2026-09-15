@@ -437,16 +437,13 @@ fn apply_active_visuals(
 /// nothing new to translate.
 pub fn build() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 16);
-    // On the outer box, not the tab pages below: the surrounding chrome
-    // (`window.rs`'s content panel) draws its own decorative corner cut at
-    // the top-left of whatever sits inside it, assuming a margin clear of
-    // it - without this here, the tab bar rendered flush against that
-    // corner instead of past it, showing as a stray notch cut into the
-    // active tab button itself.
-    page.set_margin_top(24);
-    page.set_margin_bottom(24);
-    page.set_margin_start(24);
-    page.set_margin_end(24);
+    // Now hosted inside the Cooling hub, which owns the outer padding - keep
+    // only a small internal top/bottom gap so the page sits comfortably
+    // under the hub's tab bar.
+    page.set_margin_top(8);
+    page.set_margin_bottom(8);
+    page.set_margin_start(0);
+    page.set_margin_end(0);
     page.add_css_class("page-content");
 
     let tab_bar = gtk::Box::new(gtk::Orientation::Horizontal, 8);

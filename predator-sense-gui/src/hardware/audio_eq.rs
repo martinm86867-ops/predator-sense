@@ -339,6 +339,10 @@ fn write_bands(gains_db: &[f64; BAND_COUNT as usize]) -> Result<(), String> {
 /// is the honest thing to be transparent about, not to imitate the name:
 /// this bundle is called "Immersive" here, not Atmos or DTS, because it
 /// is not either of those.
+// The whole immersive bundle is deliberately kept but NOT wired into the UI:
+// it reproducibly segfaults EasyEffects (see `ui::audio_eq_page` module docs).
+// `#[allow(dead_code)]` below records that intent instead of deleting tested code.
+#[allow(dead_code)]
 const IMMERSIVE_PLUGINS: &[&str] = &["bassenhancer", "crystalizer", "stereotools", "crossfeed"];
 
 fn plugin_path(name: &str, instance: &str) -> String {
@@ -348,6 +352,7 @@ fn plugin_path(name: &str, instance: &str) -> String {
 /// Whether every plugin in the immersive bundle is currently in the
 /// output chain - used only to set the toggle's initial state correctly
 /// when the page is built, not to decide whether to write anything.
+#[allow(dead_code)]
 pub fn is_immersive_enabled() -> Result<bool, String> {
     let plugins = get_plugins_list()?;
     Ok(IMMERSIVE_PLUGINS
@@ -361,6 +366,7 @@ pub fn is_immersive_enabled() -> Result<bool, String> {
 /// entries from the plugin chain (their settings stay in GSettings,
 /// harmless, in case the bundle gets re-enabled later) and never touches
 /// the equalizer entry, so an active EQ preset keeps working either way.
+#[allow(dead_code)]
 pub fn set_immersive(enabled: bool) -> Result<(), String> {
     ensure_service_running();
     let mut plugins = get_plugins_list()?;
@@ -378,6 +384,7 @@ pub fn set_immersive(enabled: bool) -> Result<(), String> {
     }
 }
 
+#[allow(dead_code)]
 fn write_immersive_defaults() -> Result<(), String> {
     // Bass Enhancer: modest low-end lift (schema range -100..36, 0 =
     // effectively off) - default harmonics/scope/floor left untouched.

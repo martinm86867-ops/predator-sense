@@ -5,6 +5,7 @@ pub mod badge_widget;
 pub mod battery_page;
 pub mod brand_theme;
 pub mod color_input;
+pub mod cooling_page;
 pub mod dashboard_page;
 pub mod drivers_page;
 pub mod faceted_card;

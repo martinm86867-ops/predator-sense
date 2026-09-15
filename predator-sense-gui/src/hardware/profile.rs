@@ -113,7 +113,7 @@ impl PowerProfile {
         }
     }
 
-    pub fn to_id(&self) -> &str {
+    pub fn to_id(self) -> &'static str {
         match self {
             Self::Quiet => "quiet",
             Self::Balanced => "balanced",

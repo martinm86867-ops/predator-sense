@@ -1,23 +1,18 @@
-//! Animated multi-ring "tech gauge" - ported from the user's own CSS demo
-//! (`REFERENCIA-VISUAL/animated-tech-gaug/`, their own creation, not an Acer
-//! asset) into Cairo, since GTK4's CSS engine has neither `conic-gradient`
-//! nor `@keyframes`/`animation`. Same motion technique already used by
-//! `fan_control_page.rs`'s animated fan icon: a shared elapsed-seconds phase
-//! advanced on a timer, redrawn each tick - not literal CSS.
-//!
-//! Deliberately built as loose parts, not one opaque widget: each ring is
-//! its own [`GaugeRing`] value from its own constructor function, and
-//! [`draw_rings`] takes any subset of them. [`build`] just wires the full
-//! 7-ring stack the reference demo uses behind a text core, for the common
-//! case - a caller that only wants one or two rings (e.g. layering the cyan
-//! arcs behind an existing plain progress ring) can call the ring
-//! constructors and [`draw_rings`] directly instead.
+//! Circular "tech gauge": a clean, static ring stack behind a text core
+//! (title, sub, value, unit). Built as loose parts - each ring is its own
+//! [`GaugeRing`] value and [`draw_rings`] takes any subset - so a caller can
+//! compose a one- or two-ring gauge directly instead of the default stack.
+//! The current default is a calm activity-ring look (a faint full-circle
+//! track plus a thin accent arc), replacing the earlier seven spinning
+//! decorative layers.
 
 use gtk4::prelude::*;
-use gtk4::{self as gtk, glib, pango};
-use std::cell::Cell;
-use std::rc::Rc;
-use std::time::Duration;
+use gtk4::{self as gtk, pango};
+
+/// One RGBA color tuple (`r`, `g`, `b`, `a`), each `0.0..=1.0`.
+type Rgba = (f64, f64, f64, f64);
+/// One lit arc segment: `(start_deg, end_deg, color)`.
+type ArcSegment = (f64, f64, Rgba);
 
 /// One animated ring: a set of arc segments at a fixed radius band, spinning
 /// at its own speed. Absolute pixel band widths on purpose, matching the
@@ -34,171 +29,43 @@ pub struct GaugeRing {
     pub band_inner_px: f64,
     /// Lit arc segments in local (pre-rotation) degrees, each with its own
     /// color - `(start_deg, end_deg, rgba)`.
-    pub segments: Vec<(f64, f64, (f64, f64, f64, f64))>,
+    pub segments: Vec<ArcSegment>,
     /// Seconds per full revolution; negative spins counter-clockwise, `0.0`
     /// keeps the ring static (used for the plain inner border).
     pub period_s: f64,
     /// Extra-wide, low-alpha stroke drawn under the ring first, approximating
     /// the reference's `drop-shadow` glow on the cyan ring. `None` for no glow.
-    pub glow: Option<(f64, f64, f64, f64)>,
+    pub glow: Option<Rgba>,
 }
 
 fn deg_to_rad(d: f64) -> f64 {
     d * std::f64::consts::PI / 180.0
 }
 
-/// Every `deg`-period tick of `width_deg`, matching a CSS
-/// `repeating-conic-gradient(from start, color 0 width, transparent width period)`.
-fn repeating_ticks(
-    start: f64,
-    period: f64,
-    width: f64,
-    color: (f64, f64, f64, f64),
-) -> Vec<(f64, f64, (f64, f64, f64, f64))> {
-    let mut out = Vec::new();
-    let mut a = start;
-    while a < 360.0 + start {
-        out.push((a, (a + width).min(360.0 + start), color));
-        a += period;
-    }
-    out
-}
-
-/// `.tech-gauge__ring--ticks`: a fine dashed ring near the very edge.
-pub fn ring_ticks(color: (f64, f64, f64), period_s: f64) -> GaugeRing {
-    GaugeRing {
-        outer_frac: 0.96,
-        band_outer_px: 4.0,
-        band_inner_px: 1.0,
-        segments: repeating_ticks(0.0, 4.4, 1.2, (color.0, color.1, color.2, 0.65)),
-        period_s,
-        glow: None,
-    }
-}
-
-/// `.tech-gauge__ring--detail`: a handful of soft arcs, slower than the ticks.
-pub fn ring_detail(color: (f64, f64, f64), period_s: f64) -> GaugeRing {
-    let c = |a: f64| (color.0, color.1, color.2, a);
-    GaugeRing {
-        outer_frac: 1.0,
-        band_outer_px: 4.0,
-        band_inner_px: 1.0,
-        segments: vec![
-            (23.0, 43.0, c(0.8)),
-            (155.0, 183.0, c(0.78)),
-            (292.0, 319.0, c(0.76)),
-        ],
-        period_s,
-        glow: None,
-    }
-}
-
-/// `.tech-gauge__ring--outer-arcs`: 6 medium dashes, opposite direction from
-/// the segments ring underneath it.
-pub fn ring_outer_arcs(deep: (f64, f64, f64), period_s: f64) -> GaugeRing {
-    let c = (deep.0, deep.1, deep.2, 1.0);
-    GaugeRing {
-        outer_frac: 0.91,
-        band_outer_px: 7.0,
-        band_inner_px: 2.0,
-        segments: vec![
-            (22.0, 51.0, c),
-            (70.0, 77.0, c),
-            (106.0, 113.0, c),
-            (147.0, 198.0, c),
-            (216.0, 272.0, c),
-            (295.0, 328.0, c),
-        ],
-        period_s,
-        glow: None,
-    }
-}
-
-/// `.tech-gauge__ring--segments`: the widest, most prominent dashed band.
-pub fn ring_segments(deep: (f64, f64, f64), period_s: f64) -> GaugeRing {
-    let c = (deep.0, deep.1, deep.2, 0.92);
-    GaugeRing {
-        outer_frac: 0.83,
-        band_outer_px: 14.0,
-        band_inner_px: 5.0,
-        segments: vec![
-            (-8.0, 19.0, c),
-            (23.0, 70.0, c),
-            (75.0, 113.0, c),
-            (117.0, 153.0, c),
-            (158.0, 211.0, c),
-            (215.0, 257.0, c),
-            (262.0, 310.0, c),
-            (315.0, 352.0, c),
-        ],
-        period_s,
-        glow: None,
-    }
-}
-
-/// `.tech-gauge__ring--segment-cuts`: thin dark notches over the segments
-/// ring, at the same speed, chopping it into evenly spaced chunks.
-pub fn ring_segment_cuts(period_s: f64) -> GaugeRing {
-    let cut = (0.0, 11.0 / 255.0, 14.0 / 255.0, 0.98);
-    GaugeRing {
-        outer_frac: 0.84,
-        band_outer_px: 16.0,
-        band_inner_px: 5.0,
-        segments: repeating_ticks(42.0, 40.0, 2.0, cut),
-        period_s,
-        glow: None,
-    }
-}
-
-/// `.tech-gauge__ring--cyan`: the bright accent ring, the one carrying the
-/// gauge's own brand color and glow.
-pub fn ring_cyan(accent: (f64, f64, f64), period_s: f64) -> GaugeRing {
-    let c = (accent.0, accent.1, accent.2, 1.0);
-    GaugeRing {
-        outer_frac: 0.70,
-        band_outer_px: 3.0,
-        band_inner_px: 1.0,
-        segments: vec![
-            (-28.0, 28.0, c),
-            (64.0, 150.0, c),
-            (191.0, 276.0, c),
-            (306.0, 332.0, c),
-        ],
-        period_s,
-        glow: Some((accent.0, accent.1, accent.2, 0.36)),
-    }
-}
-
-/// `.tech-gauge__ring--inner-border`: a plain static circle, not a dashed one.
-pub fn ring_inner_border(color: (f64, f64, f64)) -> GaugeRing {
-    GaugeRing {
-        outer_frac: 0.66,
-        band_outer_px: 1.0,
-        band_inner_px: 0.0,
-        segments: vec![(0.0, 360.0, (color.0, color.1, color.2, 0.26))],
-        period_s: 0.0,
-        glow: None,
-    }
-}
-
-/// The full 7-ring stack the reference demo uses, at its default speeds
-/// (`--speed-outer: 26s, --speed-mid: 13s, --speed-inner: 9s,
-/// --speed-detail: 18s`) - pass a smaller `speed_scale` (the demo's
-/// `.is-fast` is `~0.46`) to spin everything faster together.
-pub fn default_rings(accent: (f64, f64, f64), speed_scale: f64) -> Vec<GaugeRing> {
-    let deep = (0.0, 87.0 / 255.0, 102.0 / 255.0); // #005766
-    let tick_color = (0.0, 152.0 / 255.0, 170.0 / 255.0); // rgba(0,152,170,*)
-    let detail_color = (0.0, 100.0 / 255.0, 116.0 / 255.0); // rgba(0,100,116,*)
-    let border_color = (0.0, 90.0 / 255.0, 99.0 / 255.0); // rgba(0,90,99,*)
-    let s = speed_scale;
+/// A clean, modern gauge: a faint full-circle track and a thin accent arc
+/// that leaves a gap at the bottom - a calm activity-ring look instead of the
+/// earlier seven spinning decorative layers. `speed_scale` is accepted for
+/// API compatibility, but the current design is deliberately still.
+pub fn default_rings(accent: (f64, f64, f64), _speed_scale: f64) -> Vec<GaugeRing> {
     vec![
-        ring_ticks(tick_color, 26.0 * s),
-        ring_detail(detail_color, 18.0 * s),
-        ring_outer_arcs(deep, -18.0 * s),
-        ring_segments(deep, 13.0 * s),
-        ring_segment_cuts(13.0 * s),
-        ring_cyan(accent, -9.0 * s),
-        ring_inner_border(border_color),
+        // Faint full-circle track.
+        GaugeRing {
+            outer_frac: 0.88,
+            band_outer_px: 5.0,
+            band_inner_px: 3.0,
+            segments: vec![(0.0, 360.0, (1.0, 1.0, 1.0, 0.10))],
+            period_s: 0.0,
+            glow: None,
+        },
+        // Accent arc: 270° ring, gap at the bottom (start 135° -> end 405°).
+        GaugeRing {
+            outer_frac: 0.88,
+            band_outer_px: 5.0,
+            band_inner_px: 3.0,
+            segments: vec![(135.0, 405.0, (accent.0, accent.1, accent.2, 0.95))],
+            period_s: 0.0,
+            glow: None,
+        },
     ]
 }
 
@@ -214,6 +81,7 @@ pub fn draw_rings(
     rings: &[GaugeRing],
     phase_secs: f64,
 ) {
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
     for ring in rings {
         let outer_r = radius * ring.outer_frac;
         let band_w = (ring.band_outer_px - ring.band_inner_px).max(0.5);
@@ -256,16 +124,14 @@ pub fn draw_rings(
     }
 }
 
-/// A ready-built gauge: the full ring stack behind a text core (title,
-/// label, value, unit - matching `.tech-gauge__core`'s four lines).
+/// A ready-built gauge: the ring stack behind a text core. Only `widget`
+/// (for layout) and `value_label` (via [`set_value`]) are exposed for
+/// mutation; the title/sub/unit lines are fixed at build time.
 #[derive(Clone)]
 pub struct TechGauge {
     /// Place this in your layout.
     pub widget: gtk::Widget,
-    pub title_label: gtk::Label,
-    pub sub_label: gtk::Label,
     pub value_label: gtk::Label,
-    pub unit_label: gtk::Label,
 }
 
 impl TechGauge {
@@ -335,47 +201,18 @@ pub fn build(
     let overlay = gtk::Overlay::new();
     overlay.set_size_request(size_px, size_px);
 
-    let rings = Rc::new(default_rings(accent, if fast { 0.46 } else { 1.0 }));
-    let phase = Rc::new(Cell::new(0.0_f64));
+    let rings = default_rings(accent, if fast { 0.46 } else { 1.0 });
 
     let da = gtk::DrawingArea::new();
     da.set_hexpand(true);
     da.set_vexpand(true);
-    {
-        let rings = rings.clone();
-        let phase = phase.clone();
-        da.set_draw_func(move |_a, cr, w, h| {
-            let cx = w as f64 / 2.0;
-            let cy = h as f64 / 2.0;
-            let radius = (w.min(h) as f64) / 2.0;
-            draw_rings(cr, cx, cy, radius, &rings, phase.get());
-        });
-    }
+    da.set_draw_func(move |_a, cr, w, h| {
+        let cx = w as f64 / 2.0;
+        let cy = h as f64 / 2.0;
+        let radius = (w.min(h) as f64) / 2.0;
+        draw_rings(cr, cx, cy, radius, &rings, 0.0);
+    });
     overlay.set_child(Some(&da));
-
-    // Advance phase by real elapsed time, not tick count, so speed_s stays
-    // meaningful regardless of how often this actually redraws - same
-    // technique as fan_control_page.rs's animated fan icon.
-    {
-        let da = da.clone();
-        let phase = phase.clone();
-        let frame_s = 0.033;
-        glib::timeout_add_local(Duration::from_millis(33), move || {
-            if da.root().is_none() {
-                return glib::ControlFlow::Break;
-            }
-            // Same guard as fan_control_page.rs's animation timer: a GTK
-            // `Stack` keeps hidden pages realized (root() still Some), so
-            // without this a gauge left on an off-screen tab keeps redrawing
-            // at 30fps for the rest of the app's life.
-            if !crate::app_state::is_window_visible() || !da.is_mapped() {
-                return glib::ControlFlow::Continue;
-            }
-            phase.set(phase.get() + frame_s);
-            da.queue_draw();
-            glib::ControlFlow::Continue
-        });
-    }
 
     let core = gtk::Box::new(gtk::Orientation::Vertical, 0);
     core.set_halign(gtk::Align::Center);
@@ -408,9 +245,6 @@ pub fn build(
 
     TechGauge {
         widget: overlay.upcast(),
-        title_label,
-        sub_label,
         value_label,
-        unit_label,
     }
 }

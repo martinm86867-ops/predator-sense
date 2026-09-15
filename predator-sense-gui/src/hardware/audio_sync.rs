@@ -56,10 +56,6 @@ const MIN_WRITE_INTERVAL: Duration = Duration::from_millis(100);
 static RUNNING: AtomicBool = AtomicBool::new(false);
 static CHILD: Mutex<Option<Child>> = Mutex::new(None);
 
-pub fn is_running() -> bool {
-    RUNNING.load(Ordering::Relaxed)
-}
-
 /// Whether `parec` is on `PATH` - the only external dependency this feature
 /// has. Missing on a machine with no PulseAudio/PipeWire-pulse at all (rare
 /// on a desktop Linux with working audio, but not impossible).
@@ -329,7 +325,7 @@ mod tests {
     #[test]
     fn stop_before_start_is_a_harmless_no_op() {
         stop();
-        assert!(!is_running());
+        assert!(!RUNNING.load(Ordering::Relaxed));
     }
 
     /// Manual live test against real hardware, not run by the normal suite.
@@ -381,7 +377,7 @@ mod tests {
             Err(error) => println!("could not read {}: {error}", log_path.display()),
         }
         std::thread::sleep(Duration::from_millis(200));
-        assert!(!is_running());
+        assert!(!RUNNING.load(Ordering::Relaxed));
     }
 
     #[test]

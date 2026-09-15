@@ -415,7 +415,7 @@ fn build_keyboard_panel() -> gtk::Box {
     // torn down (widget.root() goes None), same pattern as ai_page.rs.
     {
         let s = state.clone();
-        glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+        glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
             let da = { s.borrow().keyboard_da.clone() };
             if da.root().is_none() {
                 return glib::ControlFlow::Break;
@@ -469,7 +469,7 @@ fn build_keyboard_panel() -> gtk::Box {
 
     let mut zone_sliders: Vec<[gtk::Scale; 3]> = Vec::new();
 
-    for zone in 0..4 {
+    for (zone, &(zr, zg, zblue)) in zone_colors.iter().enumerate() {
         let zb = gtk::Box::new(gtk::Orientation::Vertical, 3);
         // Widened from 140 (issue: add numeric 0-255 RGB entry) to fit each
         // channel's new SpinButton next to its slider without cramping.
@@ -500,8 +500,7 @@ fn build_keyboard_panel() -> gtk::Box {
 
         // R, G, B sliders (+ numeric spin button, see color_input.rs)
         let channels = ["R", "G", "B"];
-        let (zr, zg, zb_) = zone_colors[zone];
-        let defaults = [zr as f64, zg as f64, zb_ as f64];
+        let defaults = [zr as f64, zg as f64, zblue as f64];
         let mut channel_sliders: Vec<gtk::Scale> = Vec::new();
         for (ch, (name, def)) in channels.iter().zip(defaults.iter()).enumerate() {
             let row = gtk::Box::new(gtk::Orientation::Horizontal, 4);
@@ -572,19 +571,20 @@ fn build_keyboard_panel() -> gtk::Box {
     let direction_controls = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let dir_l = gtk::Label::new(Some(crate::i18n::t("direction")));
     dir_l.add_css_class("rgb-channel-label");
-    let dir_combo = gtk::ComboBoxText::new();
-    dir_combo.append_text(crate::i18n::t("left_to_right"));
-    dir_combo.append_text(crate::i18n::t("right_to_left"));
-    dir_combo.set_active(Some(match saved_dynamic.direction {
+    let dir_combo = gtk::DropDown::from_strings(&[
+        crate::i18n::t("left_to_right"),
+        crate::i18n::t("right_to_left"),
+    ]);
+    dir_combo.set_selected(match saved_dynamic.direction {
         Direction::LeftToRight => 0,
         Direction::RightToLeft => 1,
-    }));
+    });
     {
         let s = state.clone();
         let da = keyboard_da.clone();
-        dir_combo.connect_changed(move |combo| {
+        dir_combo.connect_selected_notify(move |combo| {
             let mut st = s.borrow_mut();
-            st.direction = if combo.active() == Some(0) {
+            st.direction = if combo.selected() == 0 {
                 Direction::LeftToRight
             } else {
                 Direction::RightToLeft
@@ -658,10 +658,10 @@ fn build_keyboard_panel() -> gtk::Box {
             if let Some(params) = saved_effects.borrow().get(&mode).copied() {
                 sps.set_value(params.speed as f64);
                 if let Some(direction) = params.direction {
-                    dir_combo.set_active(Some(match direction {
+                    dir_combo.set_selected(match direction {
                         Direction::LeftToRight => 0,
                         Direction::RightToLeft => 1,
-                    }));
+                    });
                 }
             }
             direction_controls
@@ -1682,7 +1682,7 @@ fn preview_zone_colors(
             // snake/meteor-like sweep. Mirror that more closely than the old
             // generic brightness wave, and reverse it with the direction UI.
             let forward = direction == Direction::LeftToRight;
-            let pos = ((phase * 0.7).rem_euclid(4.0)) as f64;
+            let pos = (phase * 0.7).rem_euclid(4.0);
             let mut out = [(0u8, 0u8, 0u8); 4];
             for (i, slot) in out.iter_mut().enumerate() {
                 let idx = if forward { i as f64 } else { (3 - i) as f64 };
@@ -1966,7 +1966,7 @@ fn l_shape_path_top_notch(
 /// base, the zone color at 85% opacity, then a fully-opaque stroke on top -
 /// shared by every key shape (plain rects and the L-shaped Enter alike).
 fn fill_key_path(cr: &gtk4::cairo::Context, r: u8, g: u8, b: u8) {
-    cr.set_source_rgba(0.08, 0.08, 0.08, 1.0);
+    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
     let _ = cr.fill_preserve();
     cr.set_source_rgba(r as f64 / 255.0, g as f64 / 255.0, b as f64 / 255.0, 0.85);
     let _ = cr.fill_preserve();
@@ -1980,7 +1980,7 @@ fn fill_key_path(cr: &gtk4::cairo::Context, r: u8, g: u8, b: u8) {
 /// this rendering code - the shape renderer itself doesn't know or care which
 /// backend/protocol picked the colors, only where the keys are.
 pub(crate) fn draw_keyboard(cr: &gtk4::cairo::Context, w: f64, h: f64, colors: &[(u8, u8, u8); 4]) {
-    cr.set_source_rgb(0.06, 0.06, 0.06);
+    cr.set_source_rgb(0.047, 0.063, 0.086);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 

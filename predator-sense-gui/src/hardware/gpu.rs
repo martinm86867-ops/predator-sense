@@ -12,14 +12,10 @@ pub struct GpuMetrics {
     pub vbios: String,
     pub vram_total_mb: u32,
     pub vram_used_mb: u32,
-    pub vram_free_mb: u32,
     pub temp: f64,
     pub clock_core_mhz: u32,
     pub clock_mem_mhz: u32,
-    pub clock_max_core: u32,
-    pub clock_max_mem: u32,
     pub util_gpu_pct: u32,
-    pub util_mem_pct: u32,
     pub power_draw_w: f64,
     pub power_limit_w: f64,
     pub power_max_w: f64,
@@ -42,13 +38,6 @@ impl GpuMetrics {
             0.0
         } else {
             self.vram_used_mb as f64 / self.vram_total_mb as f64 * 100.0
-        }
-    }
-    pub fn power_pct(&self) -> f64 {
-        if self.power_max_w <= 0.0 {
-            0.0
-        } else {
-            (self.power_draw_w / self.power_max_w * 100.0).clamp(0.0, 100.0)
         }
     }
 
@@ -238,14 +227,10 @@ fn parse_gpu_metrics(contents: &str) -> Option<GpuMetrics> {
         vbios: p[2].into(),
         vram_total_mb: parse_u32(p[3]),
         vram_used_mb: parse_u32(p[4]),
-        vram_free_mb: parse_u32(p[5]),
         temp: parse_f64(p[6]),
         clock_core_mhz: parse_u32(p[7]),
         clock_mem_mhz: parse_u32(p[8]),
-        clock_max_core: parse_u32(p[9]),
-        clock_max_mem: parse_u32(p[10]),
         util_gpu_pct: parse_u32(p[11]),
-        util_mem_pct: parse_u32(p[12]),
         power_draw_w: parse_f64(p[13]),
         power_limit_w: parse_f64(p[14]),
         power_max_w: parse_f64(p[15]),

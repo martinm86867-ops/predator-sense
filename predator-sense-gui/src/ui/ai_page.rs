@@ -15,6 +15,10 @@ use crate::hardware::gpu;
 use crate::i18n::{t, tf};
 use crate::ui::{background, gpu_page};
 
+/// Cell holding an optional shared refresh callback (see the `do_refresh`
+/// construction below, which must reference itself before the `Rc` exists).
+type RefreshFnCell = Rc<RefCell<Option<Rc<dyn Fn()>>>>;
+
 /// Same idea as `background::run` but for a worker task that reports
 /// incremental progress (model pull) before its final result - `on_update`
 /// runs once per progress item, `on_done` once at the end.
@@ -32,7 +36,7 @@ where
         let _ = done_tx.send(result);
     });
     let on_done = RefCell::new(Some(on_done));
-    glib::timeout_add_local(Duration::from_millis(80), move || {
+    glib::timeout_add_local(Duration::from_millis(200), move || {
         while let Ok(item) = rx.try_recv() {
             on_update(item);
         }
@@ -115,11 +119,24 @@ fn append_chat(tv: &gtk::TextView, text: &str, kind: ChatKind) {
 
 fn ai_error_text(e: &AiError, base_url: &str) -> String {
     match e {
-        AiError::Unreachable(_) => tf("ai_err_unreachable", &[base_url]),
-        AiError::HttpStatus(_, msg) => tf("ai_err_http", &[msg]),
+        AiError::Unreachable(detail) => {
+            append_detail(tf("ai_err_unreachable", &[base_url]), detail)
+        }
+        AiError::HttpStatus(status, msg) => tf("ai_err_http", &[&format!("{msg} (HTTP {status})")]),
         AiError::NoToolCall => t("ai_err_no_tool_call").to_string(),
         AiError::UnknownTool(name) => tf("ai_err_unknown_tool", &[name]),
-        AiError::InvalidArgs(_) => t("ai_err_invalid_args").to_string(),
+        AiError::InvalidArgs(detail) => append_detail(t("ai_err_invalid_args").to_string(), detail),
+    }
+}
+
+/// Appends a technical detail (connection error, parse error, ...) to the
+/// localized message. The detail is usually an English driver/library string,
+/// so it stays out of the translated template and is shown in parentheses.
+fn append_detail(base: String, detail: &str) -> String {
+    if detail.is_empty() {
+        base
+    } else {
+        format!("{base} ({detail})")
     }
 }
 
@@ -698,7 +715,7 @@ fn build_model_manager_section() -> gtk::Box {
     // Worked around with an indirection cell: filled in right after
     // `do_refresh` is constructed, read back (well after that point) from
     // inside the async callback.
-    let do_refresh_cell: Rc<RefCell<Option<Rc<dyn Fn()>>>> = Rc::new(RefCell::new(None));
+    let do_refresh_cell: RefreshFnCell = Rc::new(RefCell::new(None));
     let do_refresh: Rc<dyn Fn()> = {
         let installed_box = installed_box.clone();
         let status_label = status_label.clone();

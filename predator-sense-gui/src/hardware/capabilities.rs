@@ -309,13 +309,11 @@ mod tests {
         );
         // Case/whitespace-insensitive, same rule as keyboard_protocol_for_product.
         assert_eq!(fan_preset_status_for("ph315-54"), FanPresetStatus::Verified);
-    }
-
-    #[test]
-    fn known_incompatible_model_is_flagged_not_just_unverified() {
+        // PH317-55 moved here once its fan preset went through the WMI-backed
+        // PWM path (`.pwm = 1` in facer.c) instead of the broken raw-EC write.
         assert_eq!(
             fan_preset_status_for("Predator PH317-55"),
-            FanPresetStatus::KnownIncompatible
+            FanPresetStatus::Verified
         );
     }
 

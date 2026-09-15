@@ -2,7 +2,6 @@ use gtk4::prelude::*;
 use gtk4::{self as gtk, glib};
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::f64::consts::PI;
 use std::rc::Rc;
 
 use crate::hardware::sensors;
@@ -13,6 +12,28 @@ const HISTORY_SIZE: usize = 60; // 60 data points = 2 minutes at 2s interval
 struct MonitorState {
     cpu_temp_history: VecDeque<f64>,
     gpu_temp_history: VecDeque<f64>,
+}
+
+/// The widgets `do_update` writes into each tick. Bundled so the periodic
+/// updater passes one reference instead of sixteen.
+#[derive(Clone)]
+struct MonitorWidgets {
+    cpu_model_l: gtk::Label,
+    gpu_model_l: gtk::Label,
+    cpu_tv: gtk::Label,
+    cpu_tmin: gtk::Label,
+    cpu_tmax: gtk::Label,
+    gpu_tv: gtk::Label,
+    gpu_tmin: gtk::Label,
+    gpu_tmax: gtk::Label,
+    cpu_fan_w: gtk::Box,
+    cpu_freq_w: crate::ui::tech_gauge::TechGauge,
+    gpu_clock_w: crate::ui::tech_gauge::TechGauge,
+    gpu_mem_w: gtk::Box,
+    gpu_util_w: gtk::Box,
+    gpu_power_w: gtk::Box,
+    cpu_g: gtk::DrawingArea,
+    gpu_g: gtk::DrawingArea,
 }
 
 /// Build the monitoring page with real-time CPU/GPU details and temperature graphs
@@ -215,118 +236,49 @@ pub fn build() -> gtk::Box {
 
     // Periodic update every 2 seconds
     let state_c = state.clone();
-    let cpu_model_l = cpu_model_label;
-    let gpu_model_l = gpu_model_label;
-    let cpu_tv = cpu_temp_value;
-    let cpu_tmin = cpu_temp_min;
-    let cpu_tmax = cpu_temp_max;
-    let gpu_tv = gpu_temp_value;
-    let gpu_tmin = gpu_temp_min;
-    let gpu_tmax = gpu_temp_max;
-    let cpu_fan_w = cpu_fan_box;
-    let cpu_freq_w = cpu_freq_gauge;
-    let gpu_clock_w = gpu_clock_gauge;
-    let gpu_mem_w = gpu_mem_box;
-    let gpu_util_w = gpu_util_box;
-    let gpu_power_w = gpu_power_box;
-    let cpu_g = cpu_graph;
-    let gpu_g = gpu_graph;
+    let widgets = MonitorWidgets {
+        cpu_model_l: cpu_model_label,
+        gpu_model_l: gpu_model_label,
+        cpu_tv: cpu_temp_value,
+        cpu_tmin: cpu_temp_min,
+        cpu_tmax: cpu_temp_max,
+        gpu_tv: gpu_temp_value,
+        gpu_tmin: gpu_temp_min,
+        gpu_tmax: gpu_temp_max,
+        cpu_fan_w: cpu_fan_box,
+        cpu_freq_w: cpu_freq_gauge,
+        gpu_clock_w: gpu_clock_gauge,
+        gpu_mem_w: gpu_mem_box,
+        gpu_util_w: gpu_util_box,
+        gpu_power_w: gpu_power_box,
+        cpu_g: cpu_graph,
+        gpu_g: gpu_graph,
+    };
 
     // Initial update
     glib::idle_add_local_once({
         let state_c = state_c.clone();
-        let cpu_model_l = cpu_model_l.clone();
-        let gpu_model_l = gpu_model_l.clone();
-        let cpu_tv = cpu_tv.clone();
-        let cpu_tmin = cpu_tmin.clone();
-        let cpu_tmax = cpu_tmax.clone();
-        let gpu_tv = gpu_tv.clone();
-        let gpu_tmin = gpu_tmin.clone();
-        let gpu_tmax = gpu_tmax.clone();
-        let cpu_fan_w = cpu_fan_w.clone();
-        let cpu_freq_w = cpu_freq_w.clone();
-        let gpu_clock_w = gpu_clock_w.clone();
-        let gpu_mem_w = gpu_mem_w.clone();
-        let gpu_util_w = gpu_util_w.clone();
-        let gpu_power_w = gpu_power_w.clone();
-        let cpu_g = cpu_g.clone();
-        let gpu_g = gpu_g.clone();
-        move || {
-            do_update(
-                &state_c,
-                &cpu_model_l,
-                &gpu_model_l,
-                &cpu_tv,
-                &cpu_tmin,
-                &cpu_tmax,
-                &gpu_tv,
-                &gpu_tmin,
-                &gpu_tmax,
-                &cpu_fan_w,
-                &cpu_freq_w,
-                &gpu_clock_w,
-                &gpu_mem_w,
-                &gpu_util_w,
-                &gpu_power_w,
-                &cpu_g,
-                &gpu_g,
-            );
-        }
+        let widgets = widgets.clone();
+        move || do_update(&state_c, &widgets)
     });
 
     let page_c = page.clone();
-    glib::timeout_add_seconds_local(2, move || {
+    glib::timeout_add_seconds_local(3, move || {
         if !crate::app_state::is_window_visible() || !page_c.is_mapped() {
             return glib::ControlFlow::Continue;
         }
-        do_update(
-            &state_c,
-            &cpu_model_l,
-            &gpu_model_l,
-            &cpu_tv,
-            &cpu_tmin,
-            &cpu_tmax,
-            &gpu_tv,
-            &gpu_tmin,
-            &gpu_tmax,
-            &cpu_fan_w,
-            &cpu_freq_w,
-            &gpu_clock_w,
-            &gpu_mem_w,
-            &gpu_util_w,
-            &gpu_power_w,
-            &cpu_g,
-            &gpu_g,
-        );
+        do_update(&state_c, &widgets);
         glib::ControlFlow::Continue
     });
 
     page
 }
 
-fn do_update(
-    state: &Rc<RefCell<MonitorState>>,
-    cpu_model_l: &gtk::Label,
-    gpu_model_l: &gtk::Label,
-    cpu_tv: &gtk::Label,
-    cpu_tmin: &gtk::Label,
-    cpu_tmax: &gtk::Label,
-    gpu_tv: &gtk::Label,
-    gpu_tmin: &gtk::Label,
-    gpu_tmax: &gtk::Label,
-    cpu_fan_w: &gtk::Box,
-    cpu_freq_w: &crate::ui::tech_gauge::TechGauge,
-    gpu_clock_w: &crate::ui::tech_gauge::TechGauge,
-    gpu_mem_w: &gtk::Box,
-    gpu_util_w: &gtk::Box,
-    gpu_power_w: &gtk::Box,
-    cpu_g: &gtk::DrawingArea,
-    gpu_g: &gtk::DrawingArea,
-) {
+fn do_update(state: &Rc<RefCell<MonitorState>>, w: &MonitorWidgets) {
     let data = sensors::read_all_sensors();
 
-    cpu_model_l.set_text(&data.cpu_model);
-    gpu_model_l.set_text(&data.gpu_info.name);
+    w.cpu_model_l.set_text(&data.cpu_model);
+    w.gpu_model_l.set_text(&data.gpu_info.name);
 
     // Update CPU temp history
     {
@@ -348,36 +300,36 @@ fn do_update(
     // CPU temp display
     let st = state.borrow();
     if let Some(t) = data.cpu_temp {
-        cpu_tv.set_text(&format!("{}°", t as i32));
+        w.cpu_tv.set_text(&format!("{}°", t as i32));
     }
     if !st.cpu_temp_history.is_empty() {
         let min = st.cpu_temp_history.iter().cloned().fold(f64::MAX, f64::min);
         let max = st.cpu_temp_history.iter().cloned().fold(f64::MIN, f64::max);
-        cpu_tmin.set_text(&tf("min_short", &[&(min as i32).to_string()]));
-        cpu_tmax.set_text(&tf("max_short", &[&(max as i32).to_string()]));
+        w.cpu_tmin.set_text(&tf("min_short", &[&(min as i32).to_string()]));
+        w.cpu_tmax.set_text(&tf("max_short", &[&(max as i32).to_string()]));
     }
 
     // GPU temp display
     if let Some(t) = data.gpu_info.temp {
-        gpu_tv.set_text(&format!("{}°", t as i32));
+        w.gpu_tv.set_text(&format!("{}°", t as i32));
     }
     if !st.gpu_temp_history.is_empty() {
         let min = st.gpu_temp_history.iter().cloned().fold(f64::MAX, f64::min);
         let max = st.gpu_temp_history.iter().cloned().fold(f64::MIN, f64::max);
-        gpu_tmin.set_text(&tf("min_short", &[&(min as i32).to_string()]));
-        gpu_tmax.set_text(&tf("max_short", &[&(max as i32).to_string()]));
+        w.gpu_tmin.set_text(&tf("min_short", &[&(min as i32).to_string()]));
+        w.gpu_tmax.set_text(&tf("max_short", &[&(max as i32).to_string()]));
     }
     drop(st);
 
     // CPU stats
     update_stat_value(
-        cpu_fan_w,
+        &w.cpu_fan_w,
         &data
             .cpu_fan_rpm
             .map(|v| v.to_string())
             .unwrap_or("--".into()),
     );
-    cpu_freq_w.set_value(
+    w.cpu_freq_w.set_value(
         &data
             .cpu_freq_mhz
             .map(|v| v.to_string())
@@ -385,7 +337,7 @@ fn do_update(
     );
 
     // GPU stats
-    gpu_clock_w.set_value(
+    w.gpu_clock_w.set_value(
         &data
             .gpu_info
             .clock_mhz
@@ -393,7 +345,7 @@ fn do_update(
             .unwrap_or("--".into()),
     );
     update_stat_value(
-        gpu_mem_w,
+        &w.gpu_mem_w,
         &data
             .gpu_info
             .mem_clock_mhz
@@ -401,7 +353,7 @@ fn do_update(
             .unwrap_or("--".into()),
     );
     update_stat_value(
-        gpu_util_w,
+        &w.gpu_util_w,
         &data
             .gpu_info
             .utilization_pct
@@ -409,7 +361,7 @@ fn do_update(
             .unwrap_or("--".into()),
     );
     update_stat_value(
-        gpu_power_w,
+        &w.gpu_power_w,
         &data
             .gpu_info
             .power_watts
@@ -418,8 +370,8 @@ fn do_update(
     );
 
     // Redraw graphs
-    cpu_g.queue_draw();
-    gpu_g.queue_draw();
+    w.cpu_g.queue_draw();
+    w.gpu_g.queue_draw();
 }
 
 /// Draw a temperature history graph using Cairo
@@ -435,7 +387,7 @@ fn draw_temp_graph(
     let gh = h - margin * 2.0;
 
     // Background
-    cr.set_source_rgba(0.08, 0.09, 0.11, 1.0);
+    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 

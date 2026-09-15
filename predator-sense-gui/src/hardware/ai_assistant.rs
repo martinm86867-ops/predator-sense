@@ -24,7 +24,9 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 /// Fixed, closed vocabulary of actions the AI may request. There is no path
 /// from an Ollama reply to raw hardware/EC access - only these variants
 /// exist, each mapping 1:1 to an already-validated hardware:: function.
+/// The `Set` prefix is deliberate: every variant is a "set this state" action.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::enum_variant_names)]
 pub enum ToolCall {
     SetThermalProfile(PowerProfile),
     SetRgbStaticColor { r: u8, g: u8, b: u8 },

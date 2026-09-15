@@ -11,6 +11,7 @@
 //!   budget really allows unplugged. Below 15% battery, Quiet is forced
 //!   regardless of the configured target, since that's the one point where
 //!   stretching the remaining charge matters more than raw speed.
+//!
 //! Runs every tick (not just on a source transition) so a battery level
 //! crossing the 15% critical line while already unplugged reacts too.
 

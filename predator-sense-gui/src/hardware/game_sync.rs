@@ -252,14 +252,6 @@ pub fn check(games: &[GameProfile]) {
 mod tests {
     use super::*;
 
-    fn game(name: &str, executable: &str) -> GameProfile {
-        GameProfile {
-            name: name.to_string(),
-            executable: executable.to_string(),
-            profile: PowerProfile::Turbo,
-        }
-    }
-
     #[test]
     fn matches_full_path_or_basename() {
         let running = vec![PathBuf::from(

@@ -10,10 +10,10 @@ use crate::ui::background;
 
 pub fn build() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    page.set_margin_top(14);
-    page.set_margin_bottom(10);
-    page.set_margin_start(20);
-    page.set_margin_end(20);
+    page.set_margin_top(8);
+    page.set_margin_bottom(8);
+    page.set_margin_start(0);
+    page.set_margin_end(0);
 
     let caps = crate::hardware::capabilities::get();
     let cfg = config::load_app_config();
@@ -479,7 +479,7 @@ pub fn build() -> gtk::Box {
     let active_anim = active_mode.clone();
 
     let page_anim = page.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
         if !crate::app_state::is_window_visible() || !page_anim.is_mapped() {
             return glib::ControlFlow::Continue;
         }

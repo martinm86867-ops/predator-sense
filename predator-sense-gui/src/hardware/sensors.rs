@@ -23,7 +23,6 @@ pub struct SensorData {
 pub struct GpuInfo {
     pub name: String,
     pub temp: Option<f64>,
-    pub fan_speed_pct: Option<u32>,
     pub clock_mhz: Option<u32>,
     pub mem_clock_mhz: Option<u32>,
     pub utilization_pct: Option<u32>,
@@ -71,11 +70,6 @@ fn read_nvidia_gpu_info() -> GpuInfo {
     GpuInfo {
         name: metrics.name,
         temp: metrics.live.then_some(metrics.temp),
-        fan_speed_pct: if metrics.live {
-            metrics.fan_speed_pct
-        } else {
-            None
-        },
         clock_mhz: metrics.live.then_some(metrics.clock_core_mhz),
         mem_clock_mhz: metrics.live.then_some(metrics.clock_mem_mhz),
         utilization_pct: metrics.live.then_some(metrics.util_gpu_pct),

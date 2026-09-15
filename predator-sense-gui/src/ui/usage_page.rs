@@ -161,7 +161,7 @@ pub fn build() -> gtk::Box {
     {
         let state_c = state.clone();
         let page_c = page.clone();
-        glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+        glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
             if !crate::app_state::is_window_visible() || !page_c.is_mapped() {
                 return glib::ControlFlow::Continue;
             }
@@ -341,7 +341,7 @@ fn build_cpu_tab(state: Rc<RefCell<AnimState>>) -> gtk::Box {
     let temp_da_c = temp_da.clone();
     let lc_anim = list_container.clone();
     let page_anim = page.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
         if !crate::app_state::is_window_visible() || !page_anim.is_mapped() {
             return glib::ControlFlow::Continue;
         }
@@ -552,7 +552,7 @@ fn build_gpu_tab(state: Rc<RefCell<AnimState>>) -> gtk::Box {
     let vram_da_c = vram_da.clone();
     let power_da_c = power_da.clone();
     let page_c = page.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
         if !crate::app_state::is_window_visible() || !page_c.is_mapped() {
             return glib::ControlFlow::Continue;
         }
@@ -670,7 +670,7 @@ fn build_mem_tab(state: Rc<RefCell<AnimState>>) -> gtk::Box {
     let bar_c = mem_bar.clone();
     let list_anim = list.clone();
     let page_anim = page.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
         if !crate::app_state::is_window_visible() || !page_anim.is_mapped() {
             return glib::ControlFlow::Continue;
         }
@@ -797,7 +797,7 @@ fn build_storage_tab(state: Rc<RefCell<AnimState>>) -> gtk::Box {
     // Redesenho contínuo para animar donuts
     let flow_c2 = flow.clone();
     let outer_anim = outer.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(60), move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
         if !crate::app_state::is_window_visible() || !outer_anim.is_mapped() {
             return glib::ControlFlow::Continue;
         }
@@ -1130,7 +1130,7 @@ fn draw_big_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, value: f64, phase: 
     // Anel dashed de fundo
     cr.set_line_width(14.0);
     cr.set_dash(&[5.0, 3.0], 0.0);
-    cr.set_source_rgba(0.15, 0.15, 0.15, 1.0);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
     cr.arc(cx, cy, r, 0.0, 2.0 * PI);
     let _ = cr.stroke();
 
@@ -1180,7 +1180,7 @@ fn draw_big_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, value: f64, phase: 
 
 fn draw_per_core(cr: &gtk4::cairo::Context, w: f64, h: f64, cores: &[f64], phase: f64) {
     // Fundo
-    cr.set_source_rgba(0.05, 0.05, 0.06, 1.0);
+    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 
@@ -1198,7 +1198,7 @@ fn draw_per_core(cr: &gtk4::cairo::Context, w: f64, h: f64, cores: &[f64], phase
         let y = margin + bar_h_max - bar_h;
 
         // Trilho
-        cr.set_source_rgba(0.12, 0.12, 0.14, 1.0);
+        cr.set_source_rgba(0.10, 0.13, 0.17, 1.0);
         rounded_rect(cr, x, margin, bar_w, bar_h_max, 3.0);
         let _ = cr.fill();
 
@@ -1306,7 +1306,7 @@ fn draw_donut(cr: &gtk4::cairo::Context, w: f64, h: f64, pct: f64, phase: f64) {
     // Base
     cr.set_line_width(10.0);
     cr.set_dash(&[], 0.0);
-    cr.set_source_rgba(0.12, 0.12, 0.14, 1.0);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
     cr.arc(cx, cy, r, 0.0, 2.0 * PI);
     let _ = cr.stroke();
 
@@ -1391,7 +1391,7 @@ fn rounded_rect(cr: &gtk4::cairo::Context, x: f64, y: f64, w: f64, h: f64, r: f6
 /// temp_c: temperatura atual em graus Celsius.
 fn draw_temp_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, temp_c: f64, phase: f64) {
     // Fundo escuro
-    cr.set_source_rgba(0.04, 0.04, 0.05, 1.0);
+    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
     rounded_rect(cr, 0.0, 0.0, w, h, 4.0);
     let _ = cr.fill();
 
@@ -1699,6 +1699,7 @@ fn draw_fire(cr: &gtk4::cairo::Context, w: f64, h: f64, temp_c: f64, phase: f64)
 
 /// Desenha o shape de chama (teardrop com canto superior-esquerdo afiado), transformado.
 /// Transformações aplicadas: translate(cx,cy) · skewX(skew_x) · rotate(45°) · scale(scale_x, scale_y)
+#[allow(clippy::too_many_arguments)]
 fn draw_flame(
     cr: &gtk4::cairo::Context,
     cx: f64,
@@ -1729,6 +1730,7 @@ fn draw_flame(
 }
 
 /// Versão do flame com gradiente radial interno (imita CSS radial-gradient).
+#[allow(clippy::too_many_arguments)]
 fn draw_flame_radial(
     cr: &gtk4::cairo::Context,
     cx: f64,
@@ -1784,6 +1786,7 @@ fn flame_path(cr: &gtk4::cairo::Context, w: f64, h: f64) {
 }
 
 /// Partícula que sobe. t ∈ [0,1]; parâmetros de opacity/scale/top seguem o `@keyframes particleUp` do CSS.
+#[allow(clippy::too_many_arguments)]
 fn draw_fire_particle(
     cr: &gtk4::cairo::Context,
     start_x: f64,
@@ -1876,7 +1879,7 @@ fn draw_vram_donut(
     // Ring dashed base
     cr.set_line_width(14.0);
     cr.set_dash(&[5.0, 3.0], 0.0);
-    cr.set_source_rgba(0.14, 0.14, 0.16, 1.0);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
     cr.arc(cx, cy, r, 0.0, 2.0 * PI);
     let _ = cr.stroke();
 
@@ -1947,7 +1950,7 @@ fn draw_power_gauge(
     gpu: &Option<crate::hardware::gpu::GpuMetrics>,
     phase: f64,
 ) {
-    cr.set_source_rgba(0.04, 0.04, 0.05, 1.0);
+    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
     rounded_rect(cr, 0.0, 0.0, w, h, 4.0);
     let _ = cr.fill();
 

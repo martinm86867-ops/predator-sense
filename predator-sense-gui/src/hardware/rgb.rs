@@ -1,5 +1,5 @@
 use crate::i18n::{t, tf};
-use std::fs::{self, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 
@@ -46,33 +46,6 @@ impl RgbMode {
         }
     }
 
-    pub fn all() -> &'static [RgbMode] {
-        &[
-            Self::Static,
-            Self::Breath,
-            Self::Neon,
-            Self::Wave,
-            Self::Shifting,
-            Self::Zoom,
-            Self::Meteor,
-            Self::Twinkling,
-        ]
-    }
-
-    pub fn needs_color(&self) -> bool {
-        matches!(
-            self,
-            Self::Static | Self::Breath | Self::Shifting | Self::Zoom | Self::Meteor | Self::Twinkling
-        )
-    }
-
-    pub fn needs_speed(&self) -> bool {
-        !matches!(self, Self::Static)
-    }
-
-    pub fn needs_direction(&self) -> bool {
-        matches!(self, Self::Wave | Self::Shifting)
-    }
 }
 
 /// Animation direction
@@ -246,20 +219,3 @@ fn write_to_device(device_path: &str, data: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
-/// Check if user has write permission to the devices
-pub fn check_permissions() -> Result<(), String> {
-    if !is_module_loaded() {
-        return Err(t("rgb_err_module_not_loaded").to_string());
-    }
-
-    // Try to check write permissions
-    let metadata = fs::metadata(DEVICE_DYNAMIC)
-        .map_err(|e| tf("rgb_err_access_device", &[DEVICE_DYNAMIC, &e.to_string()]))?;
-
-    let permissions = metadata.permissions();
-    if permissions.readonly() {
-        return Err(t("rgb_err_no_write_perm").to_string());
-    }
-
-    Ok(())
-}
