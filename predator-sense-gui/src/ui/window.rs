@@ -50,9 +50,7 @@ pub fn build(app: &adw::Application) {
 
     // Left: brand mark + PREDATOR
     let brand_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let brand_mark = gtk::DrawingArea::new();
-    brand_mark.set_size_request(24, 24);
-    brand_mark.set_draw_func(|_a, cr, w, h| draw_brand_mark(cr, w as f64, h as f64));
+    let brand_mark = crate::ui::icon::logo_mark(24);
     let brand_text = gtk::Label::new(Some("PREDATOR"));
     brand_text.add_css_class("header-brand");
     brand_box.append(&brand_mark);
@@ -1071,31 +1069,6 @@ fn draw_panel_border(cr: &gtk4::cairo::Context, w: f64, h: f64) {
 }
 
 /// Draw brand mark
-fn draw_brand_mark(cr: &gtk4::cairo::Context, w: f64, h: f64) {
-    let pts: [(f64, f64); 10] = [
-        (0.12 * w, 0.0),
-        (0.37 * w, 0.25 * h),
-        (0.50 * w, 0.0),
-        (0.63 * w, 0.24 * h),
-        (0.88 * w, 0.0),
-        (0.88 * w, 0.56 * h),
-        (0.63 * w, h),
-        (0.50 * w, 0.74 * h),
-        (0.37 * w, h),
-        (0.12 * w, 0.56 * h),
-    ];
-    cr.move_to(pts[0].0, pts[0].1);
-    for &(x, y) in &pts[1..] {
-        cr.line_to(x, y);
-    }
-    cr.close_path();
-    let grad = gtk4::cairo::LinearGradient::new(0.0, 0.0, 0.0, h);
-    grad.add_color_stop_rgb(0.0, 0.68, 0.70, 0.75);
-    grad.add_color_stop_rgb(1.0, 0.36, 0.40, 0.45);
-    cr.set_source(&grad).unwrap();
-    let _ = cr.fill();
-}
-
 fn build_settings_page(_app: &adw::Application) -> gtk::ScrolledWindow {
     let scroll = gtk::ScrolledWindow::new();
     scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);

@@ -17,6 +17,7 @@ pub mod gauge_widget;
 pub mod gpu_page;
 pub mod grub_splash_page;
 pub mod hardware_page;
+pub mod icon;
 pub mod macros_page;
 pub mod magic_rgb_page;
 pub mod monitor_page;

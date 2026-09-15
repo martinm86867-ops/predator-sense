@@ -133,14 +133,10 @@ pub fn build(sensor_data: &SensorData) -> gtk::Box {
         let info = gtk::Box::new(gtk::Orientation::Vertical, 4);
         info.set_valign(gtk::Align::Center);
         info.set_hexpand(true);
-        if let Some(name) =
-            icon_file.and_then(|n| crate::ui::window::find_resource(&format!("icons/{n}")))
-        {
-            let img = gtk::Image::from_file(&name);
-            img.set_pixel_size(28);
-            img.set_halign(gtk::Align::Start);
-            img.set_margin_bottom(4);
-            info.append(&img);
+        if let Some(da) = icon_file.and_then(|n| crate::ui::icon::icon(n, 28)) {
+            da.set_halign(gtk::Align::Start);
+            da.set_margin_bottom(4);
+            info.append(&da);
         }
         let name_l = gtk::Label::new(Some(label));
         name_l.add_css_class("gauge-label");

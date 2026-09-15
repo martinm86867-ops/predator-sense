@@ -433,15 +433,10 @@ fn create_spec_card(
     card.set_valign(gtk::Align::Fill);
     card.set_vexpand(true);
 
-    let icon_w: gtk::Widget = match image.and_then(|name| find_resource(&format!("icons/{name}"))) {
-        Some(path) => {
-            let img = gtk::Image::from_file(path);
-            img.add_css_class("spec-icon-img");
-            // Fixed square size so every card icon lines up regardless of the
-            // source PNG's own resolution - never distorted, never inflates
-            // the card past the emoji it replaces.
-            img.set_pixel_size(40);
-            img.upcast()
+    let icon_w: gtk::Widget = match image.and_then(|name| crate::ui::icon::icon(name, 40)) {
+        Some(da) => {
+            da.add_css_class("spec-icon-img");
+            da.upcast()
         }
         None => {
             let l = gtk::Label::new(Some(icon));
@@ -475,25 +470,6 @@ fn create_spec_card(
 
     card.append(&text);
     (faceted.widget, v)
-}
-
-fn find_resource(name: &str) -> Option<String> {
-    if let Ok(exe) = std::env::current_exe() {
-        let dir = exe.parent()?;
-        let p = dir.join("../../resources").join(name);
-        if p.exists() {
-            return Some(p.to_string_lossy().to_string());
-        }
-        let p = dir.join("resources").join(name);
-        if p.exists() {
-            return Some(p.to_string_lossy().to_string());
-        }
-    }
-    let dev = format!("/opt/predator-sense/resources/{}", name);
-    if std::path::Path::new(&dev).exists() {
-        return Some(dev);
-    }
-    None
 }
 
 #[cfg(test)]
