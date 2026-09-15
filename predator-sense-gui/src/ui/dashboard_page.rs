@@ -146,33 +146,33 @@ pub fn build() -> gtk::ScrolledWindow {
     };
 
     let cards = [
-        ("CPU", "💻", Some("cpu.png"), cpu_detail),
-        ("GPU", "🎮", Some("gpu.png"), gpu_detail),
+        ("CPU", "💻", Some("cpu.svg"), cpu_detail),
+        ("GPU", "🎮", Some("gpu.svg"), gpu_detail),
         (
             crate::i18n::t("memory"),
             "🧠",
-            Some("memoria-ram.png"),
+            Some("memoria-ram.svg"),
             ram_detail,
         ),
         (
             crate::i18n::t("storage"),
             "💾",
-            Some("ssd.png"),
+            Some("ssd.svg"),
             storage_detail,
         ),
         (
             crate::i18n::t("network"),
             "🌐",
-            Some("internet.png"),
+            Some("internet.svg"),
             net_detail,
         ),
         (
             crate::i18n::t("system_os"),
             "🐧",
-            Some("linux.png"),
+            Some("linux.svg"),
             os_detail,
         ),
-        ("BIOS", "⚙", Some("bios.png"), bios_detail),
+        ("BIOS", "⚙", Some("bios.svg"), bios_detail),
     ];
 
     let custom_icons = crate::config::load_app_config().custom_icons_enabled;

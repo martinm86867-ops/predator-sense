@@ -54,7 +54,7 @@ pub fn build() -> gtk::Box {
     // Generic chip icon, not NVIDIA's own GeForce/RTX logo (trademarked,
     // not ours to redistribute) - same icon file the Dashboard's spec
     // cards already use for this same purpose.
-    if let Some(icon_path) = crate::ui::window::find_resource("icons/gpu.png") {
+    if let Some(icon_path) = crate::ui::window::find_resource("icons/gpu.svg") {
         let icon = gtk::Image::from_file(icon_path);
         icon.set_pixel_size(22);
         header.append(&icon);

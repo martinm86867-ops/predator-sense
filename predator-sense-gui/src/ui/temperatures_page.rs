@@ -81,28 +81,28 @@ pub fn build(sensor_data: &SensorData) -> gtk::Box {
     // One entry per sensor this machine actually has - each becomes its own
     // faceted card, laid out two per row below.
     let gauges: Vec<(&str, Option<f64>, Option<&'static str>)> = [
-        Some(("CPU", sensor_data.cpu_temp, icon("cpu.png"))),
-        Some(("GPU", sensor_data.gpu_temp, icon("gpu.png"))),
+        Some(("CPU", sensor_data.cpu_temp, icon("cpu.svg"))),
+        Some(("GPU", sensor_data.gpu_temp, icon("gpu.svg"))),
         Some((
             crate::i18n::t("system_label"),
             sensor_data.system_temp,
-            icon("linux.png"),
+            icon("linux.svg"),
         )),
         sensor_data
             .nvme0_temp
-            .map(|t| ("SSD 1", Some(t), icon("ssd.png"))),
+            .map(|t| ("SSD 1", Some(t), icon("ssd.svg"))),
         sensor_data
             .nvme1_temp
-            .map(|t| ("SSD 2", Some(t), icon("ssd.png"))),
+            .map(|t| ("SSD 2", Some(t), icon("ssd.svg"))),
         sensor_data
             .wifi_temp
-            .map(|t| ("WiFi", Some(t), icon("internet.png"))),
+            .map(|t| ("WiFi", Some(t), icon("internet.svg"))),
         sensor_data
             .ram0_temp
-            .map(|t| (ram1_label, Some(t), icon("memoria-ram.png"))),
+            .map(|t| (ram1_label, Some(t), icon("memoria-ram.svg"))),
         sensor_data
             .ram1_temp
-            .map(|t| ("RAM 2", Some(t), icon("memoria-ram.png"))),
+            .map(|t| ("RAM 2", Some(t), icon("memoria-ram.svg"))),
     ]
     .into_iter()
     .flatten()

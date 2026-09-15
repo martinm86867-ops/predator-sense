@@ -61,7 +61,7 @@ pub fn build() -> gtk::Box {
     // Generic chip icon, not a vendor logo (Intel/NVIDIA's own Core/GeForce
     // badges are trademarked and not ours to redistribute) - same icon file
     // the Dashboard's spec cards already use for this same purpose.
-    if let Some(icon_path) = crate::ui::window::find_resource("icons/cpu.png") {
+    if let Some(icon_path) = crate::ui::window::find_resource("icons/cpu.svg") {
         let icon = gtk::Image::from_file(icon_path);
         icon.set_pixel_size(22);
         cpu_header.append(&icon);
@@ -136,7 +136,7 @@ pub fn build() -> gtk::Box {
     gpu_faceted.widget.set_margin_top(12);
 
     let gpu_header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    if let Some(icon_path) = crate::ui::window::find_resource("icons/gpu.png") {
+    if let Some(icon_path) = crate::ui::window::find_resource("icons/gpu.svg") {
         let icon = gtk::Image::from_file(icon_path);
         icon.set_pixel_size(22);
         gpu_header.append(&icon);

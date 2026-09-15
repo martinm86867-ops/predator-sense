@@ -1,7 +1,7 @@
 # Predator Sense for Linux
 
 <p align="center">
-  <img src="predator-sense-gui/resources/logo.jpeg" width="120" alt="Predator Sense Logo">
+  <img src="predator-sense-gui/resources/logo-256.png" width="120" alt="Predator Sense Logo">
 </p>
 
 <p align="center">
