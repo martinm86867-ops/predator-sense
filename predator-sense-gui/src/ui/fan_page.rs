@@ -229,11 +229,6 @@ fn install_firmware_section(ui: &FirmwareUi) {
     }
     *ui.row.borrow_mut() = None;
 
-    // The four tier cards read the same calibration, so they go stale for the
-    // same reasons this section does - a fresh calibration from an
-    // already-open page would otherwise leave them blank until a restart.
-    refresh_tier_power(&ui.tier_labels);
-
     let Some((section, row)) = build_firmware_row(ui) else {
         return;
     };
@@ -250,7 +245,6 @@ struct FirmwareUi {
     status: gtk::Label,
     section: Rc<RefCell<Option<gtk::Box>>>,
     row: Rc<RefCell<Option<FirmwareRow>>>,
-    tier_labels: Rc<Vec<(PowerProfile, gtk::Label)>>,
 }
 
 /// Fills in (or clears) the per-tier wattage under each of the four cards.
@@ -427,80 +421,30 @@ fn apply_active_visuals(
     }
 }
 
-/// Build the performance profile control page
-/// Two tabs, same tab-bar-over-stack shape `tools_page.rs` already uses:
-/// the 4 mode cards on their own ("Modo de Desempenho"), the firmware
-/// profile switcher/calibration/temperature ceiling together on the other
-/// ("Perfil de Energia de Firmware") - previously one long page mixing both
-/// concerns. `perf_title`/`firmware_profiles` are reused verbatim as the tab
-/// labels: both already read exactly like a tab name in every language,
-/// nothing new to translate.
-pub fn build() -> gtk::Box {
+/// Builds the performance mode cards ("Performance" tab of the Cooling hub).
+/// The firmware profile switcher/calibration/temperature ceiling moved to
+/// [`build_firmware`] as a separate Cooling tab - these two concerns used to
+/// share one page under their own inner tab bar, which pushed the Cooling hub
+/// three navigation levels deep.
+pub fn build_modes() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 16);
-    // Now hosted inside the Cooling hub, which owns the outer padding - keep
-    // only a small internal top/bottom gap so the page sits comfortably
-    // under the hub's tab bar.
+    // Hosted inside the Cooling hub, which owns the outer padding - keep only
+    // a small internal top/bottom gap so the page sits comfortably under the
+    // hub's tab bar.
     page.set_margin_top(8);
     page.set_margin_bottom(8);
     page.set_margin_start(0);
     page.set_margin_end(0);
     page.add_css_class("page-content");
 
-    let tab_bar = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    tab_bar.set_halign(gtk::Align::Start);
-
-    let stack = gtk::Stack::new();
-    stack.set_transition_type(gtk::StackTransitionType::Crossfade);
-    stack.set_transition_duration(200);
-    stack.set_hexpand(true);
-    stack.set_vexpand(true);
-    stack.set_hhomogeneous(false);
-    stack.set_vhomogeneous(false);
-
-    // No margins of their own: the outer `page` above already frames the
-    // whole tab bar + stack as one unit, and `page`'s own vertical spacing
-    // (16, from `gtk::Box::new` above) already gaps the tab bar from
-    // whichever of these is showing.
-    let tab1_box = gtk::Box::new(gtk::Orientation::Vertical, 16);
-    let tab2_box = gtk::Box::new(gtk::Orientation::Vertical, 16);
-
-    let tab_buttons: Rc<RefCell<Vec<gtk::Button>>> = Rc::new(RefCell::new(Vec::new()));
-    for (i, (label, key)) in [
-        (crate::i18n::t("perf_title"), "modes"),
-        (crate::i18n::t("firmware_profiles"), "firmware"),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let btn = gtk::Button::with_label(label);
-        btn.add_css_class("usage-tab");
-        if i == 0 {
-            btn.add_css_class("usage-tab-active");
-        }
-        let stack_c = stack.clone();
-        let buttons_c = tab_buttons.clone();
-        btn.connect_clicked(move |_| {
-            stack_c.set_visible_child_name(key);
-            for (j, b) in buttons_c.borrow().iter().enumerate() {
-                if j == i {
-                    b.add_css_class("usage-tab-active");
-                } else {
-                    b.remove_css_class("usage-tab-active");
-                }
-            }
-        });
-        tab_bar.append(&btn);
-        tab_buttons.borrow_mut().push(btn);
-    }
-
     let title = gtk::Label::new(Some(crate::i18n::t("perf_title")));
     title.add_css_class("section-title");
-    tab1_box.append(&title);
+    page.append(&title);
 
     let subtitle = gtk::Label::new(Some(crate::i18n::t("perf_subtitle")));
     subtitle.add_css_class("section-subtitle");
     subtitle.set_margin_top(8);
-    tab1_box.append(&subtitle);
+    page.append(&subtitle);
 
     // Points at the opt-out (`ui::window`'s Settings page,
     // `keep_default_theme_color`) right where the live recolor this hints
@@ -510,7 +454,7 @@ pub fn build() -> gtk::Box {
     let theme_hint = gtk::Label::new(Some(crate::i18n::t("mode_theme_hint")));
     theme_hint.add_css_class("info-text-dim");
     theme_hint.set_margin_top(4);
-    tab1_box.append(&theme_hint);
+    page.append(&theme_hint);
 
     // Status label
     let status_label = gtk::Label::new(None);
@@ -738,50 +682,22 @@ pub fn build() -> gtk::Box {
         sync_eco_card_visibility(card);
     }
 
-    tab1_box.append(&profiles_box);
-    tab1_box.append(&status_label);
+    page.append(&profiles_box);
+    page.append(&status_label);
 
-    // Rebuilt in place once a calibration exists, so the freshly measured
-    // profiles appear right where the Calibrate button was instead of the page
-    // asking to be reopened. The cells are what let the periodic refresh below
-    // keep tracking whichever row is currently installed.
-    let firmware_row: Rc<RefCell<Option<FirmwareRow>>> = Rc::new(RefCell::new(None));
-    let firmware_ui = FirmwareUi {
-        page: tab2_box.clone(),
-        status: status_label.clone(),
-        section: Rc::new(RefCell::new(None)),
-        row: firmware_row.clone(),
-        tier_labels: Rc::new(tier_labels),
-    };
-    install_firmware_section(&firmware_ui);
-
-    // Current state info
-    let info_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
-    info_box.set_margin_top(16);
-    info_box.set_halign(gtk::Align::Center);
-
-    let info_text = cpu_policy_info_text();
-    let info_label = gtk::Label::new(Some(&info_text));
-    info_label.add_css_class("info-text-dim");
-    info_box.append(&info_label);
-
-    tab2_box.append(&info_box);
-    let (temp_limit, reconcile_temp_limit) = temp_limit_section();
-    tab2_box.append(&temp_limit);
-
-    // This page is built once at app startup and never rebuilt (unlike the
-    // temperatures page, which window.rs already rebuilds live) - so a
-    // profile change from anywhere OTHER than clicking a card here (the AI
-    // assistant, or the existing auto-profile-by-power-source feature)
-    // used to leave these cards showing whatever was active at launch until
-    // a full app restart. Poll and reconcile instead.
+    // This page is built once and never rebuilt (unlike the temperatures page,
+    // which window.rs rebuilds live) - so a profile change from anywhere OTHER
+    // than clicking a card here (the AI assistant, GameSync, or the
+    // auto-profile-by-power-source feature) would otherwise leave the cards
+    // stale until a restart. Poll and reconcile instead. The per-tier wattage
+    // under each card reads the same shared calibration, so it is refreshed on
+    // this tick too, rather than only when the Firmware tab rebuilds itself.
     let last_known = Rc::new(Cell::new(profile::get_current_profile()));
     let page_reconcile = page.clone();
     glib::timeout_add_seconds_local(3, move || {
-        // Same guard as fan_control_page.rs / tech_gauge.rs: this page is
-        // built once and never torn down, so without it the reconcile keeps
-        // reading hardware every 3s for the app's whole life, even while a
-        // different tab is showing.
+        // Same guard as fan_control_page.rs: built once, never torn down, so
+        // without it the reconcile keeps reading hardware for the app's whole
+        // life even while a different tab is showing.
         if !crate::app_state::is_window_visible() || !page_reconcile.is_mapped() {
             return glib::ControlFlow::Continue;
         }
@@ -790,13 +706,65 @@ pub fn build() -> gtk::Box {
             last_known.set(now);
             apply_active_visuals(&cards.borrow(), now);
         }
-        info_label.set_text(&cpu_policy_info_text());
+        refresh_tier_power(&tier_labels);
         // The power source can change at any moment by unplugging the
-        // machine, not just around a profile switch, so this gets the same
-        // tick rather than waiting for one.
+        // machine, not just around a profile switch.
         if let Some(card) = &eco_card {
             sync_eco_card_visibility(card);
         }
+        glib::ControlFlow::Continue
+    });
+
+    page
+}
+
+/// Builds the firmware profile switcher/calibration and the CPU temperature
+/// ceiling ("Firmware" tab of the Cooling hub).
+pub fn build_firmware() -> gtk::Box {
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    page.set_margin_top(8);
+    page.set_margin_bottom(8);
+    page.set_margin_start(0);
+    page.set_margin_end(0);
+    page.add_css_class("page-content");
+
+    let status_label = gtk::Label::new(None);
+    status_label.add_css_class("status-label");
+
+    // Rebuilt in place once a calibration exists, so the freshly measured
+    // profiles appear right where the Calibrate button was instead of the
+    // page asking to be reopened. The cells are what let the periodic refresh
+    // below keep tracking whichever row is currently installed.
+    let firmware_row: Rc<RefCell<Option<FirmwareRow>>> = Rc::new(RefCell::new(None));
+    let firmware_ui = FirmwareUi {
+        page: page.clone(),
+        status: status_label.clone(),
+        section: Rc::new(RefCell::new(None)),
+        row: firmware_row.clone(),
+    };
+    install_firmware_section(&firmware_ui);
+
+    // Current CPU policy state info.
+    let info_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    info_box.set_margin_top(16);
+    info_box.set_halign(gtk::Align::Center);
+
+    let info_label = gtk::Label::new(Some(&cpu_policy_info_text()));
+    info_label.add_css_class("info-text-dim");
+    info_box.append(&info_label);
+    page.append(&info_box);
+
+    let (temp_limit, reconcile_temp_limit) = temp_limit_section();
+    page.append(&temp_limit);
+
+    page.append(&status_label);
+
+    let page_reconcile = page.clone();
+    glib::timeout_add_seconds_local(3, move || {
+        if !crate::app_state::is_window_visible() || !page_reconcile.is_mapped() {
+            return glib::ControlFlow::Continue;
+        }
+        info_label.set_text(&cpu_policy_info_text());
         // The firmware index also changes from outside the app - the physical
         // mode key writes it directly - so reconcile it on the same tick.
         if let Some(row) = firmware_row.borrow().as_ref() {
@@ -808,10 +776,6 @@ pub fn build() -> gtk::Box {
         glib::ControlFlow::Continue
     });
 
-    stack.add_named(&tab1_box, Some("modes"));
-    stack.add_named(&tab2_box, Some("firmware"));
-    page.append(&tab_bar);
-    page.append(&stack);
     page
 }
 
