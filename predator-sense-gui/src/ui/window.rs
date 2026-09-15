@@ -287,7 +287,11 @@ fn build_main_ui(app: &adw::Application, window: &gtk::ApplicationWindow) {
             {
                 background::run(
                     move || {
-                        let _ = crate::hardware::profile::set_profile(profile);
+                        if let Err(e) = crate::hardware::profile::set_profile(profile) {
+                            crate::hardware::applog::error(&format!(
+                                "startup profile restore failed: {e}"
+                            ));
+                        }
                     },
                     |_| {},
                 );
@@ -311,7 +315,11 @@ fn build_main_ui(app: &adw::Application, window: &gtk::ApplicationWindow) {
             background::run(
                 move || {
                     if coolboost_enabled {
-                        let _ = crate::hardware::fan::set_coolboost(true);
+                        if let Err(e) = crate::hardware::fan::set_coolboost(true) {
+                            crate::hardware::applog::error(&format!(
+                                "startup CoolBoost restore failed: {e}"
+                            ));
+                        }
                     }
                     // Only "max" is worth restoring: it is the one mode whose
                     // loss after a reboot the user would want back. "auto" is
@@ -321,9 +329,13 @@ fn build_main_ui(app: &adw::Application, window: &gtk::ApplicationWindow) {
                         && crate::hardware::fan::get_fan_mode()
                             == Some(crate::hardware::fan::FanMode::Auto)
                     {
-                        let _ = crate::hardware::fan::set_fan_mode(
-                            crate::hardware::fan::FanMode::Max,
-                        );
+                        if let Err(e) =
+                            crate::hardware::fan::set_fan_mode(crate::hardware::fan::FanMode::Max)
+                        {
+                            crate::hardware::applog::error(&format!(
+                                "startup fan Max restore failed: {e}"
+                            ));
+                        }
                     }
                 },
                 |()| {},
@@ -379,7 +391,11 @@ fn build_main_ui(app: &adw::Application, window: &gtk::ApplicationWindow) {
                                 {
                                     return;
                                 }
-                                let _ = crate::hardware::fan::set_pwm_percent(pct, pct);
+                                if let Err(e) = crate::hardware::fan::set_pwm_percent(pct, pct) {
+                                    crate::hardware::applog::info(&format!(
+                                        "auto fan curve write failed: {e}"
+                                    ));
+                                }
                             },
                             move |_| applying_done.set(false),
                         );
