@@ -123,7 +123,7 @@ impl PowerProfile {
         }
     }
 
-    fn from_id(id: &str) -> Option<Self> {
+    pub fn from_id(id: &str) -> Option<Self> {
         match id.trim() {
             "quiet" => Some(Self::Quiet),
             "balanced" => Some(Self::Balanced),
@@ -969,6 +969,14 @@ pub fn set_profile(profile: PowerProfile) -> Result<(), String> {
         let ps_dir = config_dir.join("predator-sense");
         let _ = fs::create_dir_all(&ps_dir);
         let _ = fs::write(ps_dir.join("current_profile"), profile.to_id());
+    }
+
+    // Also remember it as the last-applied profile in config so the opt-in
+    // "apply on start" setting (ui::window) can restore it next launch.
+    {
+        let mut cfg = crate::config::load_app_config();
+        cfg.last_profile = Some(profile.to_id().to_string());
+        let _ = crate::config::save_app_config(&cfg);
     }
 
     Ok(())

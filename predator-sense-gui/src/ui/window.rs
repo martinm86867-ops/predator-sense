@@ -275,6 +275,25 @@ fn build_main_ui(app: &adw::Application, window: &gtk::ApplicationWindow) {
         crate::hardware::profile::set_manage_cpu_power(cfg.manage_cpu_power);
         crate::hardware::game_sync::set_enabled(cfg.game_sync_enabled);
 
+        // Restore the last-used performance profile on launch, opt-in via
+        // Settings ("apply on start"). set_profile() is privileged and also
+        // rewrites CPU sysfs, so it runs off the GTK thread like the fan
+        // restore below.
+        if cfg.auto_apply_on_start {
+            if let Some(profile) = cfg
+                .last_profile
+                .as_deref()
+                .and_then(crate::hardware::profile::PowerProfile::from_id)
+            {
+                background::run(
+                    move || {
+                        let _ = crate::hardware::profile::set_profile(profile);
+                    },
+                    |_| {},
+                );
+            }
+        }
+
         // Fan Control page (ui::fan_control_page): CoolBoost has no physical
         // key, so it must be reapplied on every start or a reboot drops it.
         // Fan mode is different: the physical Predator/Turbo key also writes
