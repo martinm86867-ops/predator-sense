@@ -612,7 +612,7 @@ fn draw_graph(
     let range = max - min;
 
     // Background
-    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
+    crate::ui::brand_theme::set_surface_source(cr);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 

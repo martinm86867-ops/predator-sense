@@ -1966,7 +1966,7 @@ fn l_shape_path_top_notch(
 /// base, the zone color at 85% opacity, then a fully-opaque stroke on top -
 /// shared by every key shape (plain rects and the L-shaped Enter alike).
 fn fill_key_path(cr: &gtk4::cairo::Context, r: u8, g: u8, b: u8) {
-    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
+    crate::ui::brand_theme::set_surface_source(cr);
     let _ = cr.fill_preserve();
     cr.set_source_rgba(r as f64 / 255.0, g as f64 / 255.0, b as f64 / 255.0, 0.85);
     let _ = cr.fill_preserve();
@@ -1980,7 +1980,7 @@ fn fill_key_path(cr: &gtk4::cairo::Context, r: u8, g: u8, b: u8) {
 /// this rendering code - the shape renderer itself doesn't know or care which
 /// backend/protocol picked the colors, only where the keys are.
 pub(crate) fn draw_keyboard(cr: &gtk4::cairo::Context, w: f64, h: f64, colors: &[(u8, u8, u8); 4]) {
-    cr.set_source_rgb(0.047, 0.063, 0.086);
+    crate::ui::brand_theme::set_surface_source(cr);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 

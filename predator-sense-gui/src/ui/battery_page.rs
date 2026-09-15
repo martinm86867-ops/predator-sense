@@ -445,7 +445,7 @@ fn draw_charge_graph(cr: &gtk4::cairo::Context, w: f64, h: f64, history: &VecDeq
     let gw = w - m * 2.0;
     let gh = h - m * 2.0;
 
-    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
+    crate::ui::brand_theme::set_surface_source(cr);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 

@@ -1180,7 +1180,7 @@ fn draw_big_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, value: f64, phase: 
 
 fn draw_per_core(cr: &gtk4::cairo::Context, w: f64, h: f64, cores: &[f64], phase: f64) {
     // Fundo
-    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
+    crate::ui::brand_theme::set_surface_source(cr);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 
@@ -1391,7 +1391,7 @@ fn rounded_rect(cr: &gtk4::cairo::Context, x: f64, y: f64, w: f64, h: f64, r: f6
 /// temp_c: temperatura atual em graus Celsius.
 fn draw_temp_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, temp_c: f64, phase: f64) {
     // Fundo escuro
-    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
+    crate::ui::brand_theme::set_surface_source(cr);
     rounded_rect(cr, 0.0, 0.0, w, h, 4.0);
     let _ = cr.fill();
 
@@ -1950,7 +1950,7 @@ fn draw_power_gauge(
     gpu: &Option<crate::hardware::gpu::GpuMetrics>,
     phase: f64,
 ) {
-    cr.set_source_rgba(0.047, 0.063, 0.086, 1.0);
+    crate::ui::brand_theme::set_surface_source(cr);
     rounded_rect(cr, 0.0, 0.0, w, h, 4.0);
     let _ = cr.fill();
 

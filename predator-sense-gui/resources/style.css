@@ -84,16 +84,6 @@ viewport {
     color: @text_muted;
 }
 
-/* === Sidebar === */
-.sidebar {
-    background-color: transparent;
-    padding: 0;
-}
-
-.sidebar-spacer {
-    min-height: 8px;
-}
-
 /* === Nav Labels (drawn over Cairo background) === */
 .nav-label {
     font-family: "Predator", sans-serif;
@@ -107,11 +97,6 @@ viewport {
     color: white;
     font-size: 13px;
     font-weight: 700;
-}
-
-/* === Content Area === */
-.content-area {
-    background-color: transparent;
 }
 
 .page-content {
@@ -190,14 +175,6 @@ viewport {
     font-weight: 400;
     color: @text_muted;
     margin-top: 2px;
-}
-
-/* === Info Cards === */
-.info-card {
-    padding: 14px 16px;
-    background-color: transparent;
-    border-bottom: 1px solid @border_dim;
-    border-radius: 0;
 }
 
 .info-card-title {
@@ -281,19 +258,6 @@ viewport {
     border-radius: 999px;
     font-size: 11px;
     font-weight: 600;
-}
-
-.cover-logo-preview-card,
-.cover-logo-controls-card {
-    padding: 18px;
-    background-color: @bg_card;
-    border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-}
-
-.cover-logo-preview-card {
-    border-left: 2px solid @cyan_dark;
 }
 
 .cover-logo-lid {
@@ -429,36 +393,6 @@ viewport {
     color: @danger;
 }
 
-.scale-value {
-    font-size: 12px;
-    font-weight: 600;
-    color: @cyan;
-    min-width: 30px;
-}
-
-/* === Direction Buttons === */
-.direction-button {
-    background-color: rgba(255, 255, 255, 0.04);
-    color: @text_label;
-    border: 1px solid @border_dim;
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 11px;
-}
-
-.direction-button:checked {
-    background: linear-gradient(90deg, @cyan, @cyan_dark);
-    color: white;
-    border-color: @cyan;
-}
-
-/* === Color Preview === */
-.color-preview {
-    border-radius: 8px;
-    border: 1px solid @border_dim;
-    margin-top: 4px;
-}
-
 /* === Accent Button === */
 .accent-button {
     background: linear-gradient(90deg, @cyan, @cyan_dark);
@@ -543,25 +477,6 @@ viewport {
     font-size: 12px;
     font-weight: 400;
     color: @warning;
-}
-
-/* === Profile Cards === */
-.profile-card {
-    background-color: @bg_card;
-    border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-    padding: 16px;
-}
-
-.profile-card:hover {
-    background-color: @bg_raised;
-    border-color: @border_mid;
-}
-
-.profile-active {
-    border-color: @cyan;
-    background-color: alpha(@cyan, 0.06);
 }
 
 .profile-badge {
@@ -782,15 +697,6 @@ scrollbar slider:hover {
     color: @text_muted;
 }
 
-/* === Monitoring Page === */
-.monitor-section {
-    background-color: @bg_card;
-    border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-    padding: 16px;
-}
-
 .monitor-title {
     font-family: "Predator", sans-serif;
     font-size: 17px;
@@ -836,15 +742,6 @@ scrollbar slider:hover {
 .stat-title { font-size: 12px; font-weight: 400; color: @text_muted; }
 .stat-value { font-family: "Predator", sans-serif; font-size: 20px; font-weight: 700; color: @text_main; }
 .stat-unit { font-size: 12px; font-weight: 400; color: @text_muted; margin-bottom: 4px; }
-
-/* === Dashboard === */
-.dashboard-hero {
-    padding: 20px 22px;
-    background-color: @bg_card;
-    border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-}
 
 .dashboard-vendor {
     font-size: 12px;
@@ -895,15 +792,6 @@ scrollbar slider:hover {
     font-weight: 400;
 }
 
-/* === Network Page === */
-.net-speed-card {
-    padding: 14px 18px;
-    background-color: @bg_card;
-    border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-}
-
 .net-card-title {
     font-size: 12px;
     color: @text_muted;
@@ -922,14 +810,6 @@ scrollbar slider:hover {
     font-size: 30px;
     font-weight: 700;
     color: @text_main;
-}
-
-.net-total-card {
-    padding: 10px 14px;
-    background-color: @bg_card;
-    border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
 /* === Usage page === */
@@ -954,22 +834,6 @@ scrollbar slider:hover {
     color: @cyan;
     border-color: @cyan;
     font-weight: 700;
-}
-
-.usage-panel {
-    background-color: @bg_card;
-    border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-    padding: 12px 14px;
-}
-
-.usage-hero-card {
-    background-color: @bg_raised;
-    border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-    padding: 14px 16px;
 }
 
 .usage-hero-title {
@@ -1060,19 +924,6 @@ scrollbar slider:hover {
     font-size: 12px;
     font-weight: 400;
     color: @text_main;
-}
-
-.usage-disk-card {
-    background-color: @bg_card;
-    border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-    min-width: 300px;
-    transition: border-color 180ms ease-in-out;
-}
-
-.usage-disk-card:hover {
-    border-color: @cyan;
 }
 
 .disk-title {

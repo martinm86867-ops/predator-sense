@@ -130,6 +130,13 @@ pub fn accent() -> Accent {
     })
 }
 
+/// The app's dark "surface" color (cards, graph fills, keyboard preview) as an
+/// opaque Cairo source. One definition instead of the same rgba literal
+/// repeated across draw functions.
+pub fn set_surface_source(cr: &gtk4::cairo::Context) {
+    cr.set_source_rgb(0.047, 0.063, 0.086);
+}
+
 /// Bright accent as a CSS/Pango hex string, for the handful of spots that
 /// take a color string instead of a Cairo RGB triple (e.g. `TextTag`
 /// foreground in `ai_page.rs`).
