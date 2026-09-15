@@ -1,67 +1,74 @@
 # Predator Sense for Linux
 
 <p align="center">
-  <img src="predator-sense-gui/resources/logo-256.png" width="120" alt="Predator Sense Logo">
+  <img src="predator-sense-gui/resources/logo-256.png" width="140" alt="Predator Sense logo">
 </p>
 
 <p align="center">
-  <b>Unofficial Linux kernel module and GUI for Acer gaming-laptop hardware control</b><br>
-  <i>RGB Keyboard Backlighting &bull; Turbo Mode &bull; Temperature Monitoring &bull; Performance Profiles</i>
+  <b>Hardware control for Acer gaming laptops — kept alive past official support.</b><br>
+  <i>Turbo &bull; Thermal management &bull; RGB &bull; Fan control &bull; Performance profiles</i>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Language-Rust-orange?logo=rust" alt="Rust">
   <img src="https://img.shields.io/badge/GTK-4-blue?logo=gtk" alt="GTK4">
-  <img src="https://img.shields.io/badge/License-GPL--3.0-green" alt="License">
+  <img src="https://img.shields.io/badge/License-GPL--3.0-green" alt="GPL-3.0">
   <img src="https://img.shields.io/badge/Platform-Linux-yellow?logo=linux" alt="Linux">
 </p>
 
 ---
 
-## Disclaimer
+## What this is
 
-> **Use at your own risk!** This is an **unofficial** project; Acer was not involved in its development. The kernel module was built by reverse-engineering the official Windows PredatorSense application and drives low-level WMI/ACPI interfaces that have not been tested on every laptop series. The authors are not responsible for any damage to your hardware.
->
-> All trademarks, product names, and logos (Acer, Predator, PredatorSense, Helios, Nitro, etc.) belong to their respective owners. This project is not affiliated with, endorsed by, or sponsored by Acer Inc.
+An unofficial, from-scratch reverse-engineering effort to keep Acer Predator/Helios/Nitro laptops fully usable on Linux. It ships a Linux kernel module (facer) plus a Rust + GTK4 desktop application for RGB backlighting, turbo mode, thermal/fan management, performance profiles, and hardware monitoring.
 
----
+The project began as a fork of [acer-predator-turbo-and-rgb-keyboard-linux-module](https://github.com/JafarAkhondali/acer-predator-turbo-and-rgb-keyboard-linux-module) by [JafarAkhondali](https://github.com/JafarAkhondali), and grew into its own thing: the focus is now on **models the firmware never officially supported on Linux**, with honest reporting of what is verified to work versus what is still best-effort.
 
-## About
+## Highlights
 
-Unofficial Linux kernel module for Acer gaming-laptop RGB keyboard backlighting and Turbo mode (Acer Predator, Helios, Nitro), plus a full desktop application built with Rust and GTK4.
-
-Based on the [acer-predator-turbo-and-rgb-keyboard-linux-module](https://github.com/JafarAkhondali/acer-predator-turbo-and-rgb-keyboard-linux-module) project by [JafarAkhondali](https://github.com/JafarAkhondali) and contributors.
-
----
+- **Turbo and thermal control, reverse-engineered** — the gaming WMI interface (`GUID 7A4DDFE7-…`) was decoded far enough to drive the physical Predator/Turbo key, OC mode, and fan Auto/Max/custom-% on hardware upstream never enabled (e.g. the **PH317-55**).
+- **Fan state that doesn't fight itself** — manual modes, the auto fan curve, the power-source policy, and the physical key are mutually exclusive and persist correctly, instead of silently overwriting each other.
+- **Honest capability detection** — every feature is detected at runtime and labeled *verified / unverified / incompatible* per model. Unsupported things say so, rather than pretending to work.
+- **Per-profile dynamic theming** — the entire UI (CSS, hand-drawn chrome, icons) recolors to the active mode: Quiet teal, Balanced cyan, Performance orange, Turbo red, Eco green.
+- **Built-in hardware report** — a page that documents what was detected and how confident the tool is in each control, for anyone keeping an unsupported machine running.
 
 ## Features
 
 | Feature | Description |
 |---------|-------------|
-| **Dashboard** | Live instrument cluster + complete system specs (CPU, GPU, RAM, storage, network, OS) |
-| **Temperatures** | Live gauges for CPU, GPU, system, NVMe, WiFi and RAM |
-| **Usage** | CPU / GPU / Memory / Storage with top processes |
-| **Network** | Real-time download/upload graphs with peak tracking and auto interface detection |
-| **RGB keyboard** | Static per-zone (4 zones) and dynamic effects (Breathing, Neon, Wave, Shifting, Zoom) over WMI, or natively over I2C/USB-HID on newer hardware |
-| **RGB cover logo** | Power, solid color, brightness, Breathing/Neon for the display-lid emblem (runtime-detected) |
-| **Performance profiles** | Quiet / Balanced / Performance / Turbo, plus a battery-only Eco tier |
-| **Fan control** | Live RPM with animated fans, CoolBoost toggle, Auto/Max modes |
 | **Cooling hub** | Performance modes, fan control, and the GPU dashboard in one tabbed page |
-| **Battery** | Charge stats, cycles, health, and 80% charge limit for longevity |
-| **GPU dashboard** | NVIDIA metrics: temperature, utilization, VRAM, clocks, power draw, PCIe info, and a power-limit (TGP) slider |
-| **Graphs** | Detailed CPU/GPU history charts with min/max tracking |
-| **AI assistant** 🧪 | Opt-in, local (Ollama) assistant with a fixed, already-validated action set |
+| **Performance profiles** | Quiet / Balanced / Performance / Turbo, plus a battery-only Eco tier |
+| **Fan control** | Live RPM with animated fans, CoolBoost, Auto/Max, and per-fan custom % |
+| **Software fan curve** | Temperature-driven PWM curve with user-editable breakpoints |
+| **Dashboard** | Live instrument cluster + system specs (CPU, GPU, RAM, storage, network, OS) |
+| **Temperatures** | Gauges for CPU, GPU, system, NVMe, Wi-Fi and RAM |
+| **Usage** | CPU / GPU / memory / storage with top processes |
+| **Network** | Real-time download/upload graphs with peak tracking and auto interface detection |
+| **Graphs** | CPU/GPU history charts with min/max tracking |
+| **RGB keyboard** | Static per-zone (4 zones) and dynamic effects over WMI, or natively over I2C/USB-HID |
+| **RGB cover logo** | Power, color, brightness, and effects for the display-lid emblem |
+| **GPU dashboard** | NVIDIA metrics and a power-limit (TGP) slider |
+| **Battery** | Charge stats, cycles, health, and charge-limit modes |
+| **AI assistant** 🧪 | Opt-in, local (Ollama) assistant with a fixed, validated action set |
+| **Hardware report** | Detected capabilities, per-control confidence, and reverse-engineering notes |
 | **System tray + hotkey** | Minimize to tray; the PredatorSense key opens the app |
-| **Auto capability detection** | Unsupported features are shown as "not available on this model" instead of erroring |
-| **Hardware report** | Detected capabilities, per-control confidence, and the reverse-engineering notes for this machine |
+| **Auto capability detection** | Unsupported features are reported instead of erroring |
 | **DKMS** | Kernel modules rebuild automatically across kernel upgrades |
 | **Internationalization** | English, Portuguese, Spanish, Chinese, Japanese, Russian, German, Italian, Turkish |
 
 ---
 
+## Disclaimer
+
+> **Use at your own risk.** This is an **unofficial** project; Acer was not involved. The kernel module drives low-level WMI/ACPI interfaces that have not been tested on every laptop series. The authors are not responsible for any damage to your hardware.
+>
+> All trademarks, product names, and logos belong to their respective owners. This project is not affiliated with, endorsed by, or sponsored by Acer Inc.
+
+---
+
 ## Installation
 
-### Prebuilt installer (fastest)
+### Prebuilt installer
 
 ```console
 curl --fail --location https://github.com/cleyton1986/predator-sense/releases/latest/download/predator-sense-installer --output predator-sense-installer
@@ -69,7 +76,7 @@ chmod +x predator-sense-installer
 sudo ./predator-sense-installer --install
 ```
 
-The installer, privileged helper, hotkey listener, and tray service are all provided by the same Rust multicall binary.
+The installer, privileged helper, hotkey listener, and tray service are all one Rust multicall binary.
 
 ### Build from source
 
@@ -80,13 +87,7 @@ sudo apt install libgtk-4-dev libadwaita-1-dev pkg-config build-essential \
     gcc make dkms curl tar linux-headers-$(uname -r)
 ```
 
-Rust (if not installed):
-
-```console
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-**Build & install:**
+Install Rust, then build and install:
 
 ```console
 git clone https://github.com/cleyton1986/predator-sense.git
@@ -96,7 +97,6 @@ cargo build --release
 cargo build --release --manifest-path installer/Cargo.toml
 
 sudo installer/target/release/predator-sense-installer --install
-
 /opt/predator-sense/predator-sense
 ```
 
@@ -118,10 +118,9 @@ Selecting a profile also applies its fan mode. GPU power limits are applied best
 
 ### Keyboard RGB
 
-1. Open **Lighting** in the sidebar
-2. Choose **Static** (per-zone colors) or **Dynamic** (effects)
-3. Adjust colors/effects and speed
-4. Click **Apply**
+1. Open **Lighting** in the sidebar.
+2. Choose **Static** (per-zone colors) or **Dynamic** (effects).
+3. Adjust colors/effects and speed, then **Apply**.
 
 ### GPU Dashboard
 
@@ -129,11 +128,11 @@ Real-time NVIDIA monitoring: temperature, utilization, VRAM, power draw, clocks,
 
 ### AI Assistant (beta)
 
-Opt-in, local assistant powered by [Ollama](https://ollama.com):
+Opt-in, local, powered by [Ollama](https://ollama.com):
 
-1. Install Ollama separately ([official instructions](https://ollama.com/download/linux))
-2. Download a model from the built-in model manager (`smollm2:1.7b` or larger)
-3. Enable the assistant in Settings and choose **Auto-apply** or **Always confirm**
+1. Install Ollama separately ([instructions](https://ollama.com/download/linux)).
+2. Download a model from the built-in manager (`smollm2:1.7b` or larger).
+3. Enable the assistant in Settings and choose **Auto-apply** or **Always confirm**.
 
 ---
 
@@ -176,14 +175,18 @@ Legend: ✅ tested & working · 🟡 implemented, not tested · 🧪 experimenta
 | PT516-52s | ✅ | 🟡 | ✅ | ✅ | 🟡 | - | ❌ |
 | PT917-71 | ✅ | 🟡 | ✅ | 🟡 | 🟡 | - | ❌ |
 
-> If your model is not listed, it may still work — the kernel module detects compatible WMI interfaces automatically. Please open an issue mentioning your model so this table can be updated.
+> If your model is not listed, it may still work — the kernel module detects compatible WMI interfaces automatically. Open an issue mentioning your model so the table can be updated.
 
-### PH317-55 turbo and fan control
+---
 
-The **PH317-55** (Predator Helios 300 2021) is this fork's primary target. Its firmware exposes the full gaming WMI interface (GUID `7A4DDFE7-5B5D-40B4-8595-4408E0CC7F56`, object `"BG"` → `WMBG` → `WSMI` → EC port `0xD0`), but upstream `facer.c` had no DMI quirk for it, so turbo and fan control were never enabled.
+## Reverse engineering notes
 
-- **Turbo button** — added `quirk_acer_predator_ph317_55` with `turbo = 1`. The physical turbo key now toggles OC mode (`0x205`/`0x207`), turbo fan (method 14) and the turbo LED over the gaming WMI interface. Verified: fans ramp from ~3.5k to ~8k RPM.
-- **Fan control** — added `pwm = 1` so Auto/Max and per-fan manual % route through the WMI-backed hwmon PWM path (methods 14–17) instead of the raw EC `0x21`/`0x22` write, which this model's EC does not implement (issue #1). Verified: Auto ≈3.5k RPM, Max ≈8k RPM, 50% ≈6k RPM.
+### PH317-55 (Predator Helios 300 2021)
+
+This is the fork's primary target. Its firmware exposes the full gaming WMI interface (`GUID 7A4DDFE7-5B5D-40B4-8595-4408E0CC7F56`, object `"BG"` → `WMBG` → `WSMI` → EC port `0xD0`), but upstream `facer.c` had no DMI quirk for it, so turbo and fan control were never enabled.
+
+- **Turbo button** — added `quirk_acer_predator_ph317_55` with `turbo = 1`. The physical key now toggles OC mode (`0x205`/`0x207`), turbo fan (method 14) and the turbo LED over the gaming WMI interface. Verified: fans ramp from ~3.5k to ~8k RPM.
+- **Fan control** — added `pwm = 1` so Auto/Max and per-fan manual % route through the WMI-backed hwmon PWM path (methods 14–17) instead of the raw EC `0x21`/`0x22` write, which this model's EC does not implement. Verified: Auto ≈3.5k RPM, Max ≈8k RPM, 50% ≈6k RPM.
 
 ---
 
@@ -191,8 +194,6 @@ The **PH317-55** (Predator Helios 300 2021) is this fork's primary target. Its f
 
 <details>
 <summary><b>Keyboard RGB not changing / stuck on one effect</b></summary>
-
-Reload the kernel module:
 
 ```console
 sudo rmmod facer
@@ -229,8 +230,6 @@ A full logout/login or reboot is required after adding the user to the `input` g
 <details>
 <summary><b>NVIDIA GPU page shows no data</b></summary>
 
-Verify the NVIDIA driver works:
-
 ```console
 nvidia-smi
 ```
@@ -256,8 +255,8 @@ predator-sense-gui/
 ├── protocol/      # Shared typed GUI/helper contract
 ├── src/           # Rust GTK4 application
 │   ├── hardware/  # Hardware backends (rgb, fan, sensors, gpu, profiles, ai, …)
-│   └── ui/        # GTK4 pages and custom widgets
-└── resources/     # Icons, model photos, theme
+│   └── ui/        # GTK4 pages, Cairo-drawn icons/chrome, and the theme
+└── resources/     # Logo, model photos, stylesheet
 ```
 
 ---
@@ -272,8 +271,8 @@ predator-sense-gui/
 
 ## License
 
-This project is licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
+Licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE).
 
-**Exception — product images:** the Acer Predator/Nitro laptop photos under `predator-sense-gui/resources/models/` are third-party product images and are **not** covered by the GPLv3 grant; all rights in those images remain with Acer Inc. and/or the original photographers.
+**Exception — product images:** the Acer Predator/Nitro laptop photos under `predator-sense-gui/resources/models/` are third-party product images and are **not** covered by the GPLv3 grant; all rights remain with Acer Inc. and/or the original photographers.
 
 **This software is provided "as is", without warranty of any kind.** The authors are not responsible for any damage that may occur from using this software.
