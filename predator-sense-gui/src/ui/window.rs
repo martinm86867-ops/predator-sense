@@ -349,7 +349,19 @@ fn build_main_ui(app: &adw::Application, window: &gtk::ApplicationWindow) {
                         applying.set(true);
                         let applying_done = applying.clone();
                         background::run(
-                            move || crate::hardware::fan::set_pwm_percent(pct, pct),
+                            move || {
+                                // Never override a deliberate Max/Turbo state.
+                                // The Max button already disables this curve,
+                                // so if the EC still reports Max here it came
+                                // from the physical Predator/Turbo key - leave
+                                // it alone instead of writing a curve % over it.
+                                if crate::hardware::fan::get_fan_mode()
+                                    == Some(crate::hardware::fan::FanMode::Max)
+                                {
+                                    return;
+                                }
+                                let _ = crate::hardware::fan::set_pwm_percent(pct, pct);
+                            },
                             move |_| applying_done.set(false),
                         );
                     }
