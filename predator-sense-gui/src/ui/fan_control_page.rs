@@ -297,35 +297,52 @@ pub fn build() -> gtk::Box {
             let active_done = active.clone();
             let sl_done = sl.clone();
             let mode_ids_done = mode_ids.clone();
-            background::run(fan::get_fan_mode, move |mode| {
-                refreshing_done.set(false);
-                let real_id = match mode {
-                    Some(fan::FanMode::Max) => "max",
-                    Some(fan::FanMode::Auto) => "auto",
-                    _ => return,
-                };
-                if *active_done.borrow() == real_id {
-                    return;
-                }
-                *active_done.borrow_mut() = real_id.to_string();
-                let msg = match real_id {
-                    "auto" => crate::i18n::t("automatic"),
-                    "max" => crate::i18n::t("max"),
-                    _ => "",
-                };
-                sl_done.set_text(&format!("{} ✓", msg));
-                sl_done.remove_css_class("status-error");
-                sl_done.add_css_class("status-success");
-                for (button, id) in nw_done.borrow().iter().zip(mode_ids_done.iter()) {
-                    button.remove_css_class("accent-button");
-                    button.remove_css_class("secondary-button");
-                    button.add_css_class(if id == real_id {
-                        "accent-button"
-                    } else {
-                        "secondary-button"
-                    });
-                }
-            });
+            let cpu_scale_done = cpu_scale.clone();
+            let gpu_scale_done = gpu_scale.clone();
+            background::run(
+                || (fan::get_fan_mode(), fan::get_custom_fan_pct()),
+                move |(mode, custom)| {
+                    refreshing_done.set(false);
+                    let real_id = match mode {
+                        Some(fan::FanMode::Max) => "max",
+                        Some(fan::FanMode::Auto) => "auto",
+                        // `pwm_enable == 1`: manual percentages are active, so
+                        // report "custom" with the real values instead of
+                        // leaving the previous mode showing.
+                        None if custom.is_some() => "custom",
+                        _ => return,
+                    };
+                    if *active_done.borrow() == real_id {
+                        return;
+                    }
+                    *active_done.borrow_mut() = real_id.to_string();
+                    let msg = match real_id {
+                        "auto" => crate::i18n::t("automatic").to_string(),
+                        "max" => crate::i18n::t("max").to_string(),
+                        "custom" => match custom {
+                            Some((cpu, gpu)) => {
+                                cpu_scale_done.set_value(cpu as f64);
+                                gpu_scale_done.set_value(gpu as f64);
+                                format!("CPU: {cpu}%, GPU: {gpu}%")
+                            }
+                            None => crate::i18n::t("custom").to_string(),
+                        },
+                        _ => return,
+                    };
+                    sl_done.set_text(&format!("{msg} ✓"));
+                    sl_done.remove_css_class("status-error");
+                    sl_done.add_css_class("status-success");
+                    for (button, id) in nw_done.borrow().iter().zip(mode_ids_done.iter()) {
+                        button.remove_css_class("accent-button");
+                        button.remove_css_class("secondary-button");
+                        button.add_css_class(if id == real_id {
+                            "accent-button"
+                        } else {
+                            "secondary-button"
+                        });
+                    }
+                },
+            );
             glib::ControlFlow::Continue
         });
     }

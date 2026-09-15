@@ -140,6 +140,28 @@ pub fn get_fan_mode() -> Option<FanMode> {
     }
 }
 
+/// Reads the per-fan custom PWM percentages, but only when the fan is
+/// actually in custom (manual) mode (`pwm_enable == 1`). In Auto/Max the raw
+/// `pwm` value is just the curve's current output, not a user-set percentage,
+/// so this returns `None` unless the manual mode is truly active - which is
+/// what lets the fan-control page show "Custom 60%" instead of a stale mode.
+pub fn get_custom_fan_pct() -> Option<(u8, u8)> {
+    let enable = crate::hardware::helper::read(HelperAction::PwmCpuEnableRead)?;
+    if enable.trim() != PwmControlMode::Manual.as_str() {
+        return None;
+    }
+    let cpu: u16 = crate::hardware::helper::read(HelperAction::PwmCpuRead)?
+        .parse()
+        .ok()?;
+    let gpu: u16 = crate::hardware::helper::read(HelperAction::PwmGpuRead)?
+        .parse()
+        .ok()?;
+    Some((
+        ((cpu * PERCENT_MAX) / PWM_VALUE_MAX) as u8,
+        ((gpu * PERCENT_MAX) / PWM_VALUE_MAX) as u8,
+    ))
+}
+
 /// Toggle CoolBoost on/off
 pub fn set_coolboost(enabled: bool) -> Result<(), String> {
     crate::hardware::helper::write_switch(HelperAction::CoolBoost, enabled)
