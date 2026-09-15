@@ -690,6 +690,17 @@ static struct quirk_entry quirk_acer_predator_ph317_54 = {
 	.gpu_fans = 1,
 	.pwm = 1,
 };
+/*
+ * PH317-55: same Tiger Lake / RTX 3070 Laptop generation as the PH317-53/54,
+ * and the gaming WMI interface (GUID 7A4DDFE7, object "BG" -> WMBG -> WSMI ->
+ * EC port 0xD0) is present in this machine's DSDT. Turbo was simply never
+ * enabled because no DMI quirk matched. Mirrors PH317-53 exactly.
+ */
+static struct quirk_entry quirk_acer_predator_ph317_55 = {
+	.turbo = 1,
+	.cpu_fans = 1,
+	.gpu_fans = 1,
+};
 static struct quirk_entry quirk_acer_predator_ph317_56 = {
 	.turbo = 1,
 	.cpu_fans = 1,
@@ -1083,6 +1094,15 @@ static const struct dmi_system_id acer_quirks[] __initconst = {
 			DMI_MATCH(DMI_PRODUCT_NAME, "Predator PH317-54"),
 		},
 		.driver_data = &quirk_acer_predator_ph317_54,
+	},
+	{
+		.callback = dmi_matched,
+		.ident = "Acer Predator PH317-55",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "Acer"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Predator PH317-55"),
+		},
+		.driver_data = &quirk_acer_predator_ph317_55,
 	},
 	{
 		.callback = dmi_matched,
