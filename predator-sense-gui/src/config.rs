@@ -350,7 +350,11 @@ impl Default for AppConfig {
             minimize_on_close: false,
             start_on_boot: false,
             temp_alerts: true,
-            auto_profile_ac: true,
+            // Opt-in: automatic profile-by-power-source silently overrides a
+            // manual profile choice after its grace window, which reads as
+            // "settings don't persist". Off unless the user explicitly enables
+            // it in Settings.
+            auto_profile_ac: false,
             profile_ac: default_profile_ac(),
             profile_battery: default_profile_battery(),
             font_scale: 1.0,
