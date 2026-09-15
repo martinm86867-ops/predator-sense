@@ -50,10 +50,29 @@ pub fn set_fan_mode(mode: FanMode) -> Result<(), String> {
     // is a real transition on the WMI `ThermalProfile` index - confirmed by
     // hand, see `PROTOCOLO-HARDWARE.md` §9.2. Only Auto needs this: Max is
     // supposed to sit at its fixed setpoint, not follow a curve.
+    //
+    // A deliberate Auto/Max choice also supersedes the software auto-curve:
+    // without this, the global 3s curve timer (ui::window) would override
+    // this exact write with a temperature-derived custom % on the next tick,
+    // so the user's Max (or Auto) would visibly "un-set" itself a moment
+    // later.
+    disable_auto_curve();
     if mode == FanMode::Auto {
         wake_dynamic_fan_curve();
     }
     crate::hardware::helper::execute(action, &[])
+}
+
+/// Turns the software auto-curve off when it is on. Called whenever an
+/// explicit fan mode (Auto/Max/custom %) is applied, so the background curve
+/// timer does not silently fight the user's explicit choice. Idempotent and
+/// cheap when already off (no config write).
+pub fn disable_auto_curve() {
+    let mut cfg = crate::config::load_app_config();
+    if cfg.fan_auto_curve_enabled {
+        cfg.fan_auto_curve_enabled = false;
+        let _ = crate::config::save_app_config(&cfg);
+    }
 }
 
 /// Bounces the firmware thermal-profile index off itself through another

@@ -126,6 +126,9 @@ pub fn build() -> gtk::Box {
         apply_custom.connect_clicked(move |_| {
             let cpu = cs.value() as u8;
             let gpu = gs.value() as u8;
+            // A manual % is another explicit mode: stop the background
+            // auto-curve from overriding it a moment later.
+            fan::disable_auto_curve();
             let result = if pwm_ok {
                 fan::set_pwm_percent(cpu, gpu)
             } else {
@@ -354,6 +357,11 @@ pub fn build() -> gtk::Box {
         curve_switch.connect_state_set(move |_, active| {
             let mut c = config::load_app_config();
             c.fan_auto_curve_enabled = active;
+            if active {
+                // The curve is now the active mode: clear any stale manual
+                // Auto/Max so a later startup doesn't restore one over it.
+                c.fan_mode = None;
+            }
             let _ = config::save_app_config(&c);
             glib::Propagation::Proceed
         });

@@ -275,32 +275,36 @@ fn build_main_ui(app: &adw::Application, window: &gtk::ApplicationWindow) {
         crate::hardware::profile::set_manage_cpu_power(cfg.manage_cpu_power);
         crate::hardware::game_sync::set_enabled(cfg.game_sync_enabled);
 
-        // Fan Control page (ui::fan_control_page): CoolBoost and fan mode
-        // used to only ever be written straight to the EC with nothing
-        // remembering the choice, so closing Predator Sense (or a reboot
-        // resetting the EC) silently dropped them - reapply them here on
-        // every start. Off the GTK thread since each helper write costs
-        // roughly 150ms and can trigger a polkit prompt.
+        // Fan Control page (ui::fan_control_page): CoolBoost has no physical
+        // key, so it must be reapplied on every start or a reboot drops it.
+        // Fan mode is different: the physical Predator/Turbo key also writes
+        // it directly (through facer.ko), so blindly rewriting the last-saved
+        // mode here would override a key press made before the app opened -
+        // the reported "Turbo on, open app, fans reset to default" bug. Read
+        // the live EC mode first and only restore "max" over a reboot-reset
+        // "auto"; never force "auto" back. Off the GTK thread since each
+        // helper read/write costs ~150ms and can trigger a polkit prompt.
         let coolboost_enabled = cfg.coolboost_enabled;
         let fan_mode = cfg.fan_mode.clone();
-        if crate::hardware::capabilities::get().ec && (coolboost_enabled || fan_mode.is_some()) {
+        if crate::hardware::capabilities::get().ec
+            && (coolboost_enabled || fan_mode.as_deref() == Some("max"))
+        {
             background::run(
                 move || {
                     if coolboost_enabled {
                         let _ = crate::hardware::fan::set_coolboost(true);
                     }
-                    match fan_mode.as_deref() {
-                        Some("max") => {
-                            let _ = crate::hardware::fan::set_fan_mode(
-                                crate::hardware::fan::FanMode::Max,
-                            );
-                        }
-                        Some("auto") => {
-                            let _ = crate::hardware::fan::set_fan_mode(
-                                crate::hardware::fan::FanMode::Auto,
-                            );
-                        }
-                        _ => {}
+                    // Only "max" is worth restoring: it is the one mode whose
+                    // loss after a reboot the user would want back. "auto" is
+                    // the EC's own safe default and re-applying it can only
+                    // override a live turbo-key press, so it is never written.
+                    if fan_mode.as_deref() == Some("max")
+                        && crate::hardware::fan::get_fan_mode()
+                            == Some(crate::hardware::fan::FanMode::Auto)
+                    {
+                        let _ = crate::hardware::fan::set_fan_mode(
+                            crate::hardware::fan::FanMode::Max,
+                        );
                     }
                 },
                 |()| {},
