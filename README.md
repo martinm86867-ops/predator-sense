@@ -172,7 +172,7 @@ Legend: ✅ tested & working · 🟡 implemented, not tested · 🧪 experimenta
 | PH315-55 | ✅ | 🟡 | ✅ | ❌ | 🟡 | - | ❌ |
 | PH317-53 | ✅ | ✅ | ✅ | ✅ | 🟡 | - | ❌ |
 | PH317-54 | ✅ | ✅ | ✅ | 🟡 | ✅ | - | 🧪 |
-| **PH317-55** | ✅ | ✅ | ✅ | 🟡 | ✅ | - | ❌ |
+| **PH317-55** | ✅ | ✅ | ✅ | 🟡 | ✅ | - | ✅ |
 | PH317-56 | ✅ | 🟡 | ✅ | 🟡 | 🟡 | - | ❌ |
 | PH517-51 | ✅ | 🟡 | ✅ | 🟡 | 🟡 | - | ❌ |
 | PH517-52 | ✅ | 🟡 | ✅ | 🟡 | 🟡 | - | ❌ |
@@ -191,6 +191,13 @@ Legend: ✅ tested & working · 🟡 implemented, not tested · 🧪 experimenta
 | PT917-71 | ✅ | 🟡 | ✅ | 🟡 | 🟡 | - | ❌ |
 
 > If your model is not listed, it may still work — the kernel module detects compatible WMI interfaces automatically. Please open an issue mentioning your model so this table can be updated.
+
+### PH317-55 turbo and fan control
+
+The **PH317-55** (Predator Helios 300 2021) is this fork's primary target. Its firmware exposes the full gaming WMI interface (GUID `7A4DDFE7-5B5D-40B4-8595-4408E0CC7F56`, object `"BG"` → `WMBG` → `WSMI` → EC port `0xD0`), but upstream `facer.c` had no DMI quirk for it, so turbo and fan control were never enabled.
+
+- **Turbo button** — added `quirk_acer_predator_ph317_55` with `turbo = 1`. The physical turbo key now toggles OC mode (`0x205`/`0x207`), turbo fan (method 14) and the turbo LED over the gaming WMI interface. Verified: fans ramp from ~3.5k to ~8k RPM.
+- **Fan control** — added `pwm = 1` so Auto/Max and per-fan manual % route through the WMI-backed hwmon PWM path (methods 14–17) instead of the raw EC `0x21`/`0x22` write, which this model's EC does not implement (issue #1). Verified: Auto ≈3.5k RPM, Max ≈8k RPM, 50% ≈6k RPM.
 
 ---
 

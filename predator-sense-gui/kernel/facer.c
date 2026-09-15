@@ -694,12 +694,19 @@ static struct quirk_entry quirk_acer_predator_ph317_54 = {
  * PH317-55: same Tiger Lake / RTX 3070 Laptop generation as the PH317-53/54,
  * and the gaming WMI interface (GUID 7A4DDFE7, object "BG" -> WMBG -> WSMI ->
  * EC port 0xD0) is present in this machine's DSDT. Turbo was simply never
- * enabled because no DMI quirk matched. Mirrors PH317-53 exactly.
+ * enabled because no DMI quirk matched.
+ *
+ * .pwm = 1 mirrors PH317-54 (issue #39): it exposes the WMI-backed hwmon PWM
+ * path (methods 14-17) so fan Auto/Max preset goes through
+ * WMID_gaming_set_fan_behavior instead of the raw EC 0x21/0x22 write, which
+ * this model's EC firmware does not implement (issue #1). Confirmed on this
+ * machine: turbo spins the fans to max, and fan RPM reads via WMI.
  */
 static struct quirk_entry quirk_acer_predator_ph317_55 = {
 	.turbo = 1,
 	.cpu_fans = 1,
 	.gpu_fans = 1,
+	.pwm = 1,
 };
 static struct quirk_entry quirk_acer_predator_ph317_56 = {
 	.turbo = 1,

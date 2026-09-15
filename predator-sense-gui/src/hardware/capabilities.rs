@@ -116,16 +116,18 @@ fn detect_model() -> String {
     }
 }
 
-/// The only chassis the fan-preset EC bytes were hand-verified on - write
-/// then readback, confirmed on this project's own dev hardware.
-const FAN_PRESET_VERIFIED: &[&str] = &["PH315-54"];
+/// Chassis where the Auto/Max fan preset is known to work.
+/// - **PH315-54**: raw EC bytes (0x21/0x22) hand-verified with readback.
+/// - **PH317-55**: verified via the WMI-backed hwmon PWM path (`.pwm = 1` in
+///   facer.c, methods 14-17) - turbo toggles the fans to max and Auto/Max
+///   preset go through `WMID_gaming_set_fan_behavior` instead of raw EC.
+const FAN_PRESET_VERIFIED: &[&str] = &["PH315-54", "PH317-55"];
 
 /// Confirmed by a real report to use different EC values, not just untested.
-/// - **PH317-55** (issue #1, `hunter3141592653`, closed): reporter had no fan
-///   control at all; root cause confirmed to be a different EC firmware, not
-///   an app bug. Refusing here beats sending PH315-54 bytes that are already
-///   known not to mean the same thing on this board.
-const FAN_PRESET_KNOWN_INCOMPATIBLE: &[&str] = &["PH317-55"];
+/// PH317-55 was removed from here: its raw-EC fan preset is indeed broken
+/// (issue #1), but `.pwm = 1` now routes fan control through the WMI path,
+/// so the raw-EC incompatibility no longer applies.
+const FAN_PRESET_KNOWN_INCOMPATIBLE: &[&str] = &[];
 
 /// Every other Predator/Nitro model this project knows the name of, with no
 /// fan-preset report either way yet - `fan_preset_status_for` returns
