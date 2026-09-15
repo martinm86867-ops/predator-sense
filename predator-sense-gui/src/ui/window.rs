@@ -10,8 +10,8 @@ use crate::config;
 use crate::hardware::{rgb, sensors, setup};
 use crate::tray::TrayManager;
 use crate::ui::{
-    ai_page, background, battery_page, cooling_page, dashboard_page, drivers_page, monitor_page,
-    network_page, rgb_page, setup_page, temperatures_page, tools_page, usage_page,
+    ai_page, background, battery_page, cooling_page, dashboard_page, drivers_page, hardware_page,
+    monitor_page, network_page, rgb_page, setup_page, temperatures_page, tools_page, usage_page,
 };
 
 thread_local! {
@@ -626,6 +626,10 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
             "drivers".into(),
             Box::new(|| drivers_page::build().upcast()),
         );
+        pages.insert(
+            "hardware".into(),
+            Box::new(|| hardware_page::build().upcast()),
+        );
         // GameSync, Macros and the AI assistant used to be their own
         // top-level entries here, each reachable as a separate named page.
         // They moved under one "Tools" hub (`tools_page.rs`, tab bar over a
@@ -672,6 +676,7 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
         (crate::i18n::t("monitoring"), "monitor"),
         (crate::i18n::t("tools_nav"), "tools"),
         (crate::i18n::t("drivers_and_manuals"), "drivers"),
+        (crate::i18n::t("hardware_nav"), "hardware"),
         (crate::i18n::t("settings"), "settings"),
     ];
 
