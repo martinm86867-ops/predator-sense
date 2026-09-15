@@ -1,6 +1,7 @@
 use predator_sense_protocol::helper::{
     Action as HelperAction, FanMode as HelperFanMode, PwmControlMode, PERCENT_MAX, PWM_VALUE_MAX,
 };
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Fan control modes
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -86,7 +87,17 @@ pub fn disable_auto_curve() {
 /// is a bonus wake-up, not the fan mode change itself. Logs if the bounce
 /// left the profile somewhere other than where it started, since that *is* a
 /// real, visible side effect a caller did not ask for.
+/// Set once the dynamic fan-curve wake has been performed this process. The
+/// bounce only needs to happen once: after it the EC stays in its dynamic
+/// fan-curve state until a reboot, so re-bouncing on every Auto application
+/// (each profile switch to Quiet/Balanced, power-policy enforcement, launch)
+/// just caused an audible fan blip each time with no benefit.
+static WOKE_DYNAMIC_CURVE: AtomicBool = AtomicBool::new(false);
+
 fn wake_dynamic_fan_curve() {
+    if WOKE_DYNAMIC_CURVE.load(Ordering::Relaxed) {
+        return;
+    }
     use crate::hardware::thermal_profile;
     if !thermal_profile::is_available() {
         return;
@@ -103,6 +114,8 @@ fn wake_dynamic_fan_curve() {
         ));
         return;
     }
+    // The bounce happened - mark it so later Auto writes don't re-bounce.
+    WOKE_DYNAMIC_CURVE.store(true, Ordering::Relaxed);
     if let Err(e) = thermal_profile::set(current) {
         crate::hardware::applog::error(&format!(
             "fan auto-curve wake left the firmware power profile at {other} instead of \
