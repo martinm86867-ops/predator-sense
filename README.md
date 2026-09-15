@@ -38,7 +38,7 @@ Based on the [acer-predator-turbo-and-rgb-keyboard-linux-module](https://github.
 
 | Feature | Description |
 |---------|-------------|
-| **Dashboard** | Laptop photo + complete system specs (CPU, GPU, RAM, storage, network, OS) |
+| **Dashboard** | Live instrument cluster + complete system specs (CPU, GPU, RAM, storage, network, OS) |
 | **Temperatures** | Live gauges for CPU, GPU, system, NVMe, WiFi and RAM |
 | **Usage** | CPU / GPU / Memory / Storage with top processes |
 | **Network** | Real-time download/upload graphs with peak tracking and auto interface detection |
@@ -46,30 +46,16 @@ Based on the [acer-predator-turbo-and-rgb-keyboard-linux-module](https://github.
 | **RGB cover logo** | Power, solid color, brightness, Breathing/Neon for the display-lid emblem (runtime-detected) |
 | **Performance profiles** | Quiet / Balanced / Performance / Turbo, plus a battery-only Eco tier |
 | **Fan control** | Live RPM with animated fans, CoolBoost toggle, Auto/Max modes |
+| **Cooling hub** | Performance modes, fan control, and the GPU dashboard in one tabbed page |
 | **Battery** | Charge stats, cycles, health, and 80% charge limit for longevity |
 | **GPU dashboard** | NVIDIA metrics: temperature, utilization, VRAM, clocks, power draw, PCIe info, and a power-limit (TGP) slider |
 | **Graphs** | Detailed CPU/GPU history charts with min/max tracking |
 | **AI assistant** 🧪 | Opt-in, local (Ollama) assistant with a fixed, already-validated action set |
 | **System tray + hotkey** | Minimize to tray; the PredatorSense key opens the app |
 | **Auto capability detection** | Unsupported features are shown as "not available on this model" instead of erroring |
+| **Hardware report** | Detected capabilities, per-control confidence, and the reverse-engineering notes for this machine |
 | **DKMS** | Kernel modules rebuild automatically across kernel upgrades |
-| **Internationalization** | Automatic English / Portuguese based on system locale |
-
----
-
-## Screenshots
-
-| Dashboard | Temperatures | Usage |
-|:---:|:---:|:---:|
-| ![Dashboard](assets/psense-1.png) | ![Temperatures](assets/psense-2.png) | ![Usage](assets/psense-3.png) |
-
-| Lighting | Modes | Fan Control |
-|:---:|:---:|:---:|
-| ![Lighting](assets/psense-5.png) | ![Modes](assets/psense-6.png) | ![Fan Control](assets/psense-7.png) |
-
-| Battery | GPU | Settings |
-|:---:|:---:|:---:|
-| ![Battery](assets/psense-8.png) | ![GPU](assets/psense-9.png) | ![Settings](assets/psense-12.png) |
+| **Internationalization** | English, Portuguese, Spanish, Chinese, Japanese, Russian, German, Italian, Turkish |
 
 ---
 
