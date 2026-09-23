@@ -707,7 +707,6 @@ static struct quirk_entry quirk_acer_predator_ph317_55 = {
 	.cpu_fans = 1,
 	.gpu_fans = 1,
 	.pwm = 1,
-	.four_zone_kb = 1,
 };
 static struct quirk_entry quirk_acer_predator_ph317_56 = {
 	.turbo = 1,

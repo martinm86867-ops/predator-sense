@@ -141,8 +141,8 @@ pub fn apply_dynamic_effect(config: &RgbConfig) -> Result<(), String> {
     payload[5] = config.red;
     payload[6] = config.green;
     payload[7] = config.blue;
-    // Byte 8: reserved
-    payload[9] = 1; // Enable flag - MUST be 1
+    payload[8] = 1; // KLES: Keyboard Lighting Enable State in ACPI WMBH Method 0x14
+    payload[9] = 1; // Legacy enable flag
 
     write_to_device(DEVICE_DYNAMIC, &payload)
 }
@@ -165,6 +165,7 @@ pub fn apply_brightness_only(brightness: u8) -> Result<(), String> {
 
     let mut payload = [0u8; 16];
     payload[2] = brightness;
+    payload[8] = if brightness > 0 { 1 } else { 0 };
     payload[9] = 1;
 
     write_to_device(DEVICE_DYNAMIC, &payload)

@@ -76,6 +76,7 @@ def apply_static(zones_colors, brightness=100):
     # Commit brightness via WMI dynamic packet
     payload = [0] * PAYLOAD_SIZE
     payload[2] = max(0, min(100, brightness))
+    payload[8] = 1 if brightness > 0 else 0  # KLES enable flag in ACPI WMBH Method 0x14
     payload[9] = 1
     with open(CHARACTER_DEVICE, "wb") as cd:
         cd.write(bytes(payload))
@@ -94,6 +95,7 @@ def apply_dynamic(mode, speed=4, brightness=100, direction=1, r=0, g=255, b=255)
     payload[5] = max(0, min(255, r))
     payload[6] = max(0, min(255, g))
     payload[7] = max(0, min(255, b))
+    payload[8] = 1 if brightness > 0 else 0  # KLES enable flag in ACPI WMBH Method 0x14
     payload[9] = 1
 
     with open(CHARACTER_DEVICE, "wb") as cd:
