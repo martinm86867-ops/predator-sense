@@ -811,7 +811,7 @@ fn build_keyboard_panel() -> gtk::Box {
                 // of its own and resets to the default pulsing effect. Only the
                 // HID path is replayable (the service speaks raw HID, not WMI),
                 // so only persist when it applied.
-                if hid_rgb::is_available() && hid_result.is_ok() {
+                if hid_result.is_ok() {
                     let mut cfg = crate::config::load_app_config();
                     cfg.rgb_static_zones = Some(
                         st.zone_colors
@@ -869,6 +869,7 @@ fn build_keyboard_panel() -> gtk::Box {
             if result.is_ok() && !preview_applied {
                 let mut cfg = crate::config::load_app_config();
                 cfg.rgb_is_static = st.is_static;
+                cfg.rgb_brightness = st.brightness;
                 if !st.is_static {
                     cfg.rgb_dynamic_last = Some(RgbConfig {
                         mode: st.mode,
