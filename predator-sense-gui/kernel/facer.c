@@ -707,6 +707,7 @@ static struct quirk_entry quirk_acer_predator_ph317_55 = {
 	.cpu_fans = 1,
 	.gpu_fans = 1,
 	.pwm = 1,
+	.four_zone_kb = 1,
 };
 static struct quirk_entry quirk_acer_predator_ph317_56 = {
 	.turbo = 1,
@@ -4079,6 +4080,10 @@ static void acer_wmi_notify(
 			acer_toggle_turbo();
 		else if (return_value.key_num == 0x5 && has_cap(ACER_CAP_PLATFORM_PROFILE))
 			acer_thermal_profile_change();
+		break;
+	case 0x4:
+		/* Keyboard illumination / backlight toggle event from firmware */
+		sparse_keymap_report_event(acer_wmi_input_dev, KEY_KBDILLUMTOGGLE, 1, true);
 		break;
 	default:
 		pr_warn("Unknown function number - %d - %d\n",

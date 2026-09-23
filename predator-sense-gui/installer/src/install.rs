@@ -2003,18 +2003,26 @@ fn product_model() -> String {
 /// be a guess, not a verified fix. Pure and file-system-free so the gating
 /// is testable without touching `/etc`.
 fn keyboard_hwdb_fix_for(product: &str) -> Option<&'static str> {
-    if !product.contains("PH315-54") {
-        return None;
-    }
     // hwdb syntax requires each property line indented by exactly one
     // space - a backslash-newline source continuation would strip that
     // along with the line's own leading whitespace, so the "\n " here is
     // deliberate, not decorative indentation.
-    Some(concat!(
-        "evdev:atkbd:dmi:bvn*:bvr*:bd*:svnAcer*:pnPredator*PH*315-54:*\n",
-        " KEYBOARD_KEY_ef=kbdillumup\n",
-        " KEYBOARD_KEY_f0=kbdillumdown\n",
-    ))
+    if product.contains("PH315-54") {
+        Some(concat!(
+            "evdev:atkbd:dmi:bvn*:bvr*:bd*:svnAcer*:pnPredator*PH*315-54:*\n",
+            " KEYBOARD_KEY_ef=kbdillumup\n",
+            " KEYBOARD_KEY_f0=kbdillumdown\n",
+        ))
+    } else if product.contains("PH317-55") {
+        Some(concat!(
+            "evdev:atkbd:dmi:bvn*:bvr*:bd*:svnAcer*:pnPredator*PH*317-55:*\n",
+            " KEYBOARD_KEY_ef=kbdillumup\n",
+            " KEYBOARD_KEY_f0=kbdillumdown\n",
+            " KEYBOARD_KEY_e070=kbdillumtoggle\n",
+        ))
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -2263,9 +2271,11 @@ mod tests {
     #[test]
     fn keyboard_hwdb_fix_is_scoped_to_the_one_confirmed_model() {
         assert!(keyboard_hwdb_fix_for("Predator PH315-54").is_some());
+        assert!(keyboard_hwdb_fix_for("Predator PH317-55").is_some());
         // DMI product_name doesn't always come back trimmed to exactly the
         // marketing name - contains(), not equality, is deliberate.
         assert!(keyboard_hwdb_fix_for("Acer Predator PH315-54_998_2.007").is_some());
+        assert!(keyboard_hwdb_fix_for("Acer Predator PH317-55_1.14").is_some());
         assert!(keyboard_hwdb_fix_for("Predator PH315-52").is_none());
         assert!(keyboard_hwdb_fix_for("Predator PH315-55").is_none());
         assert!(keyboard_hwdb_fix_for("unknown").is_none());

@@ -67,3 +67,7 @@ Thumbs.db
 core
 .depend
 .docs
+
+# Runtime state
+config.json
+current_profile
