@@ -157,7 +157,7 @@ Legend: ✅ tested & working · 🟡 implemented, not tested · 🧪 experimenta
 | PH315-55 | ✅ | 🟡 | ✅ | ❌ | 🟡 | - | ❌ |
 | PH317-53 | ✅ | ✅ | ✅ | ✅ | 🟡 | - | ❌ |
 | PH317-54 | ✅ | ✅ | ✅ | 🟡 | ✅ | - | 🧪 |
-| **PH317-55** | ✅ | ✅ | ✅ | 🟡 | ✅ | - | ✅ |
+| **PH317-55** | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ |
 | PH317-56 | ✅ | 🟡 | ✅ | 🟡 | 🟡 | - | ❌ |
 | PH517-51 | ✅ | 🟡 | ✅ | 🟡 | 🟡 | - | ❌ |
 | PH517-52 | ✅ | 🟡 | ✅ | 🟡 | 🟡 | - | ❌ |
@@ -183,10 +183,13 @@ Legend: ✅ tested & working · 🟡 implemented, not tested · 🧪 experimenta
 
 ### PH317-55 (Predator Helios 300 2021)
 
-This is the fork's primary target. Its firmware exposes the full gaming WMI interface (`GUID 7A4DDFE7-5B5D-40B4-8595-4408E0CC7F56`, object `"BG"` → `WMBG` → `WSMI` → EC port `0xD0`), but upstream `facer.c` had no DMI quirk for it, so turbo and fan control were never enabled.
+This is the fork's primary target. Its firmware exposes the full gaming WMI interface (`GUID 7A4DDFE7-5B5D-40B4-8595-4408E0CC7F56`, object `"BH"` / `"BG"` → `WMBH` → `WSMI` → EC port `0xD0`), but upstream `facer.c` had no DMI quirk for it, so turbo, fan control, and reliable RGB were never enabled.
 
-- **Turbo button** — added `quirk_acer_predator_ph317_55` with `turbo = 1`. The physical key now toggles OC mode (`0x205`/`0x207`), turbo fan (method 14) and the turbo LED over the gaming WMI interface. Verified: fans ramp from ~3.5k to ~8k RPM.
+- **Turbo button** — added `quirk_acer_predator_ph317_55` with `turbo = 1`. The physical key toggles OC mode (`0x205`/`0x207`), turbo fan (method 14) and the turbo LED over the gaming WMI interface. Verified: fans ramp from ~3.5k to ~8k RPM.
 - **Fan control** — added `pwm = 1` so Auto/Max and per-fan manual % route through the WMI-backed hwmon PWM path (methods 14–17) instead of the raw EC `0x21`/`0x22` write, which this model's EC does not implement. Verified: Auto ≈3.5k RPM, Max ≈8k RPM, 50% ≈6k RPM.
+- **Keyboard RGB & ACPI Byte 8 Enable Flag (`KLES`)** — decoded ACPI `SSDT12` (`Method WMBH` / Method 20). The 9th byte (`BHLK[8]`) maps directly to `\_SB.PC00.LPCB.EC0.KLES` (Keyboard Lighting Enable State). Upstream tools set byte 9 while leaving byte 8 at 0, instructing the EC to extinguish the LEDs. Setting byte 8 to `1` fixes hardware illumination across both 4-zone static and dynamic effects.
+- **LCD Screen Dimming Bug vs Keyboard Illumination (`Fn + F9` / `Fn + F10`)** — in upstream systemd `60-keyboard.hwdb`, generic Acer laptops map scancode `ef` to `brightnessdown` (Fn+Left screen dimming). Because the PH317-55 DMI modalias is `svnAcer:pnPredatorPH317-55:*`, it inherited this rule, causing `Fn + F10` / `Fn + F9` to dim the LCD display screen instead of the keyboard. Adding an exact DMI hwdb match mapping `ef` → `kbdillumup`, `f0` → `kbdillumdown`, and `e070` → `kbdillumdown` isolates the keyboard illumination from the display panel.
+- **WMI Notify Clean Consumption** — ACPI WMI notification `0x4` (emitted by the EC on hardware backlight changes) is consumed cleanly in `acer_wmi_notify`, eliminating `dmesg` warnings and preventing synthetic duplicate toggle keypresses from conflicting with the desktop compositor.
 
 ---
 
