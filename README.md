@@ -71,7 +71,7 @@ The project began as a fork of [acer-predator-turbo-and-rgb-keyboard-linux-modul
 ### Prebuilt installer
 
 ```console
-curl --fail --location https://github.com/cleyton1986/predator-sense/releases/latest/download/predator-sense-installer --output predator-sense-installer
+curl --fail --location https://github.com/martinm86867-ops/predator-sense/releases/latest/download/predator-sense-installer --output predator-sense-installer
 chmod +x predator-sense-installer
 sudo ./predator-sense-installer --install
 ```
@@ -90,7 +90,7 @@ sudo apt install libgtk-4-dev libadwaita-1-dev pkg-config build-essential \
 Install Rust, then build and install:
 
 ```console
-git clone https://github.com/cleyton1986/predator-sense.git
+git clone https://github.com/martinm86867-ops/predator-sense.git
 cd predator-sense/predator-sense-gui
 
 cargo build --release
