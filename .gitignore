@@ -71,3 +71,5 @@ core
 # Runtime state
 config.json
 current_profile
+thermal_profile
+thermal_profiles.json
