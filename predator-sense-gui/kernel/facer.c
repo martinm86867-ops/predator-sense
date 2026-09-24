@@ -4081,8 +4081,8 @@ static void acer_wmi_notify(
 			acer_thermal_profile_change();
 		break;
 	case 0x4:
-		/* Keyboard illumination / backlight toggle event from firmware */
-		sparse_keymap_report_event(acer_wmi_input_dev, KEY_KBDILLUMTOGGLE, 1, true);
+		/* Firmware notification: keyboard backlight adjusted in hardware.
+		 * Consumed to suppress warnings and prevent duplicate toggle events. */
 		break;
 	default:
 		pr_warn("Unknown function number - %d - %d\n",

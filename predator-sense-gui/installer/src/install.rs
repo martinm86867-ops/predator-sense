@@ -2015,10 +2015,11 @@ fn keyboard_hwdb_fix_for(product: &str) -> Option<&'static str> {
         ))
     } else if product.contains("PH317-55") {
         Some(concat!(
+            "evdev:atkbd:dmi:bvn*:bvr*:bd*:svnAcer*:pnPredatorPH317-55:*\n",
             "evdev:atkbd:dmi:bvn*:bvr*:bd*:svnAcer*:pnPredator*PH*317-55:*\n",
             " KEYBOARD_KEY_ef=kbdillumup\n",
             " KEYBOARD_KEY_f0=kbdillumdown\n",
-            " KEYBOARD_KEY_e070=kbdillumtoggle\n",
+            " KEYBOARD_KEY_e070=kbdillumdown\n",
         ))
     } else {
         None
