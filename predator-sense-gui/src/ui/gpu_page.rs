@@ -448,13 +448,12 @@ fn update(state: &Rc<RefCell<GpuState>>, w: &AllWidgets) {
         } else {
             min_w + 50.0
         };
-        let current_w = if m.power_limit_w > 0.0 {
-            m.power_limit_w
-        } else {
-            max_w
-        };
-        w.power_scale.set_range(min_w, max_w);
-        w.power_scale.set_value(current_w);
+        if max_w > min_w {
+            w.power_scale.set_range(min_w, max_w);
+            let current_w = m.power_limit_w.clamp(min_w, max_w);
+            w.power_scale.set_value(current_w);
+            w.power_value.set_text(&format!("{current_w:.0} W"));
+        }
         let supported = m.power_limit_supported();
         w.power_scale.set_sensitive(supported);
         if supported {
@@ -462,7 +461,6 @@ fn update(state: &Rc<RefCell<GpuState>>, w: &AllWidgets) {
         } else {
             w.power_scale.remove_css_class("accent-scale");
         }
-        w.power_value.set_text(&format!("{current_w:.0} W"));
         if !m.power_limit_supported() {
             w.power_error
                 .set_text(crate::i18n::t("gpu_power_limit_unsupported"));
@@ -619,7 +617,7 @@ fn draw_graph(
     let m = 4.0;
     let gw = w - m * 2.0;
     let gh = h - m * 2.0;
-    let range = max - min;
+    let range = if max > min { max - min } else { 1.0 };
 
     // Background
     crate::ui::brand_theme::set_surface_source(cr);
@@ -692,8 +690,9 @@ fn draw_graph(
         );
         cr.set_font_size(11.0);
         let txt = format!("{:.0}", last);
-        let ext = cr.text_extents(&txt).unwrap();
-        cr.move_to(w - ext.width() - 6.0, 14.0);
-        let _ = cr.show_text(&txt);
+        if let Ok(ext) = cr.text_extents(&txt) {
+            cr.move_to(w - ext.width() - 6.0, 14.0);
+            let _ = cr.show_text(&txt);
+        }
     }
 }
