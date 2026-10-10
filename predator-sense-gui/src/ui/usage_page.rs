@@ -157,11 +157,11 @@ pub fn build() -> gtk::Box {
         });
     }
 
-    // Tick de animação (~16fps) para interpolação suave
+    // Tick de animação (reduzido para 200ms para poupar ciclos de CPU)
     {
         let state_c = state.clone();
         let page_c = page.clone();
-        glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+        glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
             if !crate::app_state::is_window_visible() || !page_c.is_mapped() {
                 return glib::ControlFlow::Continue;
             }
@@ -341,7 +341,7 @@ fn build_cpu_tab(state: Rc<RefCell<AnimState>>) -> gtk::Box {
     let temp_da_c = temp_da.clone();
     let lc_anim = list_container.clone();
     let page_anim = page.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
         if !crate::app_state::is_window_visible() || !page_anim.is_mapped() {
             return glib::ControlFlow::Continue;
         }
@@ -552,7 +552,7 @@ fn build_gpu_tab(state: Rc<RefCell<AnimState>>) -> gtk::Box {
     let vram_da_c = vram_da.clone();
     let power_da_c = power_da.clone();
     let page_c = page.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
         if !crate::app_state::is_window_visible() || !page_c.is_mapped() {
             return glib::ControlFlow::Continue;
         }
@@ -670,7 +670,7 @@ fn build_mem_tab(state: Rc<RefCell<AnimState>>) -> gtk::Box {
     let bar_c = mem_bar.clone();
     let list_anim = list.clone();
     let page_anim = page.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
         if !crate::app_state::is_window_visible() || !page_anim.is_mapped() {
             return glib::ControlFlow::Continue;
         }
@@ -797,7 +797,7 @@ fn build_storage_tab(state: Rc<RefCell<AnimState>>) -> gtk::Box {
     // Redesenho contínuo para animar donuts
     let flow_c2 = flow.clone();
     let outer_anim = outer.clone();
-    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
         if !crate::app_state::is_window_visible() || !outer_anim.is_mapped() {
             return glib::ControlFlow::Continue;
         }
