@@ -1120,57 +1120,52 @@ fn state_name(s: &str) -> &'static str {
 
 // ============ DRAWING ============
 
-fn draw_big_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, value: f64, phase: f64) {
+fn draw_big_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, value: f64, _phase: f64) {
     let cx = w / 2.0;
     let cy = h / 2.0;
     let r = w.min(h) / 2.0 - 18.0;
     let fraction = (value / 100.0).clamp(0.0, 1.0);
-    let pulse = 0.75 + 0.25 * ((phase * TAU).sin() * 0.5 + 0.5);
 
-    // Anel dashed de fundo
-    cr.set_line_width(14.0);
-    cr.set_dash(&[5.0, 3.0], 0.0);
-    cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
+    // Anel de fundo
+    cr.set_line_width(12.0);
+    cr.set_dash(&[], 0.0);
+    if crate::ui::brand_theme::is_light_mode() {
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.08);
+    } else {
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
+    }
     cr.arc(cx, cy, r, 0.0, 2.0 * PI);
     let _ = cr.stroke();
 
-    // Arco de progresso com glow suave
+    // Arco de progresso
     if fraction > 0.001 {
-        // Cor baseada em uso
         let (cr0, cg0, cb0) = if fraction < 0.6 {
             crate::ui::brand_theme::accent().bright
         } else if fraction < 0.85 {
-            (0.95, 0.75, 0.15)
+            (0.85, 0.50, 0.05)
         } else {
-            (0.95, 0.25, 0.2)
+            (0.93, 0.26, 0.22)
         };
-        // Glow externo
-        for gi in 0..4 {
-            let spread = (gi as f64 + 1.0) * 3.0;
-            let alpha = (0.18 / (gi as f64 + 1.0)) * pulse;
-            cr.set_source_rgba(cr0, cg0, cb0, alpha);
-            cr.set_line_width(14.0 + spread);
-            cr.set_dash(&[], 0.0);
-            cr.arc(cx, cy, r, -PI / 2.0, -PI / 2.0 + fraction * 2.0 * PI);
-            let _ = cr.stroke();
-        }
-        // Arco principal
         cr.set_source_rgba(cr0, cg0, cb0, 1.0);
-        cr.set_line_width(14.0);
-        cr.set_dash(&[5.0, 3.0], 0.0);
+        cr.set_line_width(12.0);
+        cr.set_line_cap(gtk4::cairo::LineCap::Round);
         cr.arc(cx, cy, r, -PI / 2.0, -PI / 2.0 + fraction * 2.0 * PI);
         let _ = cr.stroke();
     }
 
     // Texto central
     cr.set_dash(&[], 0.0);
-    cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+    if crate::ui::brand_theme::is_light_mode() {
+        cr.set_source_rgba(0.06, 0.09, 0.16, 1.0);
+    } else {
+        cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+    }
     cr.select_font_face(
-        "Sans",
+        "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Ubuntu', sans-serif",
         gtk4::cairo::FontSlant::Normal,
         gtk4::cairo::FontWeight::Bold,
     );
-    cr.set_font_size(42.0);
+    cr.set_font_size(36.0);
     let txt = format!("{:.0}%", value);
     if let Ok(ext) = cr.text_extents(&txt) {
         cr.move_to(cx - ext.width() / 2.0, cy + ext.height() / 3.0);
@@ -1178,18 +1173,20 @@ fn draw_big_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, value: f64, phase: 
     }
 }
 
-fn draw_per_core(cr: &gtk4::cairo::Context, w: f64, h: f64, cores: &[f64], phase: f64) {
+fn draw_per_core(cr: &gtk4::cairo::Context, w: f64, h: f64, cores: &[f64], _phase: f64) {
+    let is_light = crate::ui::brand_theme::is_light_mode();
+
     // Fundo
     crate::ui::brand_theme::set_surface_source(cr);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 
-    let margin = 10.0;
+    let margin = 14.0;
     let n = cores.len().max(1);
     let usable_w = w - margin * 2.0;
-    let spacing = 4.0;
-    let bar_w = ((usable_w - spacing * (n as f64 - 1.0)) / n as f64).max(8.0);
-    let bar_h_max = h - margin * 2.0 - 14.0;
+    let spacing = 6.0;
+    let bar_w = ((usable_w - spacing * (n as f64 - 1.0)) / n as f64).max(6.0);
+    let bar_h_max = h - margin * 2.0 - 18.0;
 
     for (i, &v) in cores.iter().enumerate() {
         let x = margin + i as f64 * (bar_w + spacing);
@@ -1197,8 +1194,12 @@ fn draw_per_core(cr: &gtk4::cairo::Context, w: f64, h: f64, cores: &[f64], phase
         let bar_h = bar_h_max * fill;
         let y = margin + bar_h_max - bar_h;
 
-        // Trilho
-        cr.set_source_rgba(0.10, 0.13, 0.17, 1.0);
+        // Trilho do core: elegante e sutil
+        if is_light {
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.06);
+        } else {
+            cr.set_source_rgba(1.0, 1.0, 1.0, 0.07);
+        }
         rounded_rect(cr, x, margin, bar_w, bar_h_max, 3.0);
         let _ = cr.fill();
 
@@ -1206,26 +1207,28 @@ fn draw_per_core(cr: &gtk4::cairo::Context, w: f64, h: f64, cores: &[f64], phase
         let (rc, gc, bc) = if fill < 0.5 {
             crate::ui::brand_theme::accent().bright
         } else if fill < 0.8 {
-            (0.9, 0.7, 0.15)
+            (0.85, 0.50, 0.05)
         } else {
-            (0.95, 0.25, 0.2)
+            (0.93, 0.26, 0.22)
         };
-        let pulse = 0.75 + 0.25 * ((phase * TAU + i as f64 * 0.3).sin() * 0.5 + 0.5);
-        // Glow
-        cr.set_source_rgba(rc, gc, bc, 0.25 * pulse);
-        rounded_rect(cr, x - 1.0, y - 1.0, bar_w + 2.0, bar_h + 2.0, 3.5);
-        let _ = cr.fill();
-        // Bar
-        cr.set_source_rgba(rc, gc, bc, 0.95);
-        rounded_rect(cr, x, y, bar_w, bar_h, 3.0);
-        let _ = cr.fill();
 
-        // Label
-        cr.set_source_rgba(0.6, 0.6, 0.6, 1.0);
-        cr.set_font_size(9.0);
+        // Barra de atividade sólida e limpa
+        if fill > 0.005 {
+            cr.set_source_rgb(rc, gc, bc);
+            rounded_rect(cr, x, y, bar_w, bar_h, 3.0);
+            let _ = cr.fill();
+        }
+
+        // Label do Core
+        if is_light {
+            cr.set_source_rgba(0.3, 0.35, 0.45, 1.0);
+        } else {
+            cr.set_source_rgba(0.6, 0.65, 0.75, 1.0);
+        }
+        cr.set_font_size(10.0);
         let label = format!("{}", i);
         if let Ok(ext) = cr.text_extents(&label) {
-            cr.move_to(x + (bar_w - ext.width()) / 2.0, h - 2.0);
+            cr.move_to(x + (bar_w - ext.width()) / 2.0, h - 4.0);
             let _ = cr.show_text(&label);
         }
     }
@@ -1333,13 +1336,17 @@ fn draw_donut(cr: &gtk4::cairo::Context, w: f64, h: f64, pct: f64, phase: f64) {
     }
 
     // Texto central
-    cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+    if crate::ui::brand_theme::is_light_mode() {
+        cr.set_source_rgba(0.06, 0.09, 0.16, 1.0);
+    } else {
+        cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+    }
     cr.select_font_face(
-        "Sans",
+        "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Ubuntu', sans-serif",
         gtk4::cairo::FontSlant::Normal,
         gtk4::cairo::FontWeight::Bold,
     );
-    cr.set_font_size(22.0);
+    cr.set_font_size(20.0);
     let txt = format!("{:.0}%", pct);
     if let Ok(ext) = cr.text_extents(&txt) {
         cr.move_to(cx - ext.width() / 2.0, cy + ext.height() / 3.0);
@@ -1353,27 +1360,26 @@ fn draw_proc_bar(
     h: f64,
     fraction: f64,
     color: (f64, f64, f64),
-    phase: f64,
+    _phase: f64,
 ) {
     let f = fraction.clamp(0.0, 1.0);
     let margin = 1.0;
     let bw = w - margin * 2.0;
     let bh = h - margin * 2.0;
+    let is_light = crate::ui::brand_theme::is_light_mode();
     // Trilho
-    cr.set_source_rgba(0.1, 0.1, 0.12, 1.0);
+    if is_light {
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.08);
+    } else {
+        cr.set_source_rgba(0.1, 0.1, 0.12, 1.0);
+    }
     rounded_rect(cr, margin, margin, bw, bh, 3.0);
     let _ = cr.fill();
     if f < 0.001 {
         return;
     }
-    let pulse = 0.8 + 0.2 * ((phase * TAU).sin() * 0.5 + 0.5);
-    cr.set_source_rgba(color.0, color.1, color.2, 0.95 * pulse);
+    cr.set_source_rgba(color.0, color.1, color.2, 0.95);
     rounded_rect(cr, margin, margin, bw * f, bh, 3.0);
-    let _ = cr.fill();
-    // Barra de "cabeça" mais clara
-    cr.set_source_rgba(1.0, 1.0, 1.0, 0.45 * pulse);
-    let head_w = 2.0_f64.min(bw * f);
-    rounded_rect(cr, margin + bw * f - head_w, margin, head_w, bh, 1.0);
     let _ = cr.fill();
 }
 
@@ -1387,479 +1393,72 @@ fn rounded_rect(cr: &gtk4::cairo::Context, x: f64, y: f64, w: f64, h: f64, r: f6
     cr.close_path();
 }
 
-/// Desenha um gauge de temperatura com chamas animadas no fundo.
-/// temp_c: temperatura atual em graus Celsius.
-fn draw_temp_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, temp_c: f64, phase: f64) {
-    // Fundo escuro
+/// Desenha um gauge de temperatura limpo e profissional com barra de progresso horizontal e escala
+fn draw_temp_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, temp_c: f64, _phase: f64) {
     crate::ui::brand_theme::set_surface_source(cr);
-    rounded_rect(cr, 0.0, 0.0, w, h, 4.0);
+    rounded_rect(cr, 0.0, 0.0, w, h, 6.0);
     let _ = cr.fill();
 
-    // Fogo sempre rola atrás — intensidade acompanha a temperatura (35°C a 85°C)
-    draw_fire(cr, w, h, temp_c, phase);
-
-    // Barra de escala vertical (termômetro lateral)
-    let tube_w = 18.0;
-    let tube_x = w - tube_w - 10.0;
-    let tube_top = 22.0;
-    let tube_bottom = h - 22.0;
-    let tube_h = tube_bottom - tube_top;
-
-    // Tubo de fundo
-    cr.set_source_rgba(0.1, 0.1, 0.12, 0.95);
-    rounded_rect(cr, tube_x, tube_top, tube_w, tube_h, tube_w / 2.0);
-    let _ = cr.fill();
-
-    // Preenchimento baseado em temp (25°C a 100°C mapeado 0→1)
-    let fill_frac = ((temp_c - 25.0) / 75.0).clamp(0.0, 1.0);
-    let fill_h = tube_h * fill_frac;
-    let fill_y = tube_bottom - fill_h;
-    if fill_frac > 0.001 {
-        let grad = gtk4::cairo::LinearGradient::new(0.0, fill_y, 0.0, tube_bottom);
-        grad.add_color_stop_rgba(0.0, 1.0, 0.85, 0.1, 1.0);
-        grad.add_color_stop_rgba(0.5, 1.0, 0.45, 0.05, 1.0);
-        grad.add_color_stop_rgba(1.0, 0.95, 0.15, 0.05, 1.0);
-        let _ = cr.set_source(&grad);
-        rounded_rect(cr, tube_x, fill_y, tube_w, fill_h, tube_w / 2.0);
-        let _ = cr.fill();
-
-        // Bolha pulsante na base
-        let pulse = 0.8 + 0.2 * ((phase * TAU).sin() * 0.5 + 0.5);
-        cr.set_source_rgba(1.0, 0.5, 0.1, 0.6 * pulse);
-        cr.arc(
-            tube_x + tube_w / 2.0,
-            tube_bottom - 2.0,
-            tube_w * 0.8,
-            0.0,
-            2.0 * PI,
-        );
-        let _ = cr.fill();
-    }
-
-    // Marcações (25, 50, 75, 100)
-    cr.set_source_rgba(0.35, 0.35, 0.38, 1.0);
-    cr.set_line_width(1.0);
-    for i in 0..=3 {
-        let y = tube_top + tube_h * (1.0 - i as f64 / 3.0);
-        cr.move_to(tube_x - 4.0, y);
-        cr.line_to(tube_x, y);
-        let _ = cr.stroke();
-    }
+    let is_light = crate::ui::brand_theme::is_light_mode();
 
     // Valor numérico grande à esquerda
     let txt = if temp_c > 0.0 {
-        format!("{:.0}°", temp_c)
+        format!("{:.0}°C", temp_c)
     } else {
         "—".into()
     };
-    cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+
+    if is_light {
+        cr.set_source_rgba(0.06, 0.09, 0.16, 1.0);
+    } else {
+        cr.set_source_rgba(0.95, 0.96, 0.98, 1.0);
+    }
     cr.select_font_face(
-        "Sans",
+        "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Ubuntu', sans-serif",
         gtk4::cairo::FontSlant::Normal,
         gtk4::cairo::FontWeight::Bold,
     );
-    cr.set_font_size(46.0);
+    cr.set_font_size(36.0);
     if let Ok(ext) = cr.text_extents(&txt) {
-        let tx = 20.0;
-        let ty = h / 2.0 + ext.height() / 3.0;
-        // Sombra suave
-        cr.set_source_rgba(0.0, 0.0, 0.0, 0.6);
-        cr.move_to(tx + 2.0, ty + 2.0);
-        let _ = cr.show_text(&txt);
-        cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
-        cr.move_to(tx, ty);
+        cr.move_to(20.0, h / 2.0 - 10.0 + ext.height() / 2.0);
         let _ = cr.show_text(&txt);
     }
 
-    // Rótulo "°C" menor
-    cr.set_font_size(14.0);
-    cr.set_source_rgba(0.85, 0.85, 0.85, 0.9);
-    let unit = "Celsius";
-    cr.move_to(22.0, h / 2.0 + 26.0);
-    let _ = cr.show_text(unit);
-
-    // Borda sutil colorida baseada em temp
-    let (br, bg, bb) = if temp_c < 60.0 {
-        (0.0, 0.6, 0.8)
-    } else if temp_c < 80.0 {
-        (0.95, 0.6, 0.1)
+    // Status label
+    cr.set_font_size(12.0);
+    let (status_text, rc, gc, bc) = if temp_c >= 85.0 {
+        ("High (Thermal Throttle Risk)", 0.93, 0.26, 0.22)
+    } else if temp_c >= 70.0 {
+        ("Warm", 0.85, 0.50, 0.05)
     } else {
-        (0.95, 0.2, 0.1)
+        ("Optimal", 0.10, 0.65, 0.38)
     };
-    let pulse_border = 0.5 + 0.5 * ((phase * TAU).sin() * 0.5 + 0.5);
-    cr.set_source_rgba(br, bg, bb, 0.4 + 0.35 * pulse_border);
-    cr.set_line_width(2.0);
-    rounded_rect(cr, 1.0, 1.0, w - 2.0, h - 2.0, 4.0);
-    let _ = cr.stroke();
-}
+    cr.set_source_rgb(rc, gc, bc);
+    cr.move_to(20.0, h / 2.0 + 20.0);
+    let _ = cr.show_text(status_text);
 
-/// Desenha um fogo inspirado no CSS `scaleUpDown` / `shake` / `particleUp` / `glow`.
-/// 4 camadas: fire-bottom (brasa blurada com cor pulsante), fire-left/right (shake),
-/// fire-center (scaleUpDown), cada uma com sua própria partícula subindo.
-fn draw_fire(cr: &gtk4::cairo::Context, w: f64, h: f64, temp_c: f64, phase: f64) {
-    // Intensidade: 0 abaixo de 30°C, 1 a partir de 90°C
-    let intensity = ((temp_c - 30.0) / 60.0).clamp(0.0, 1.0);
-    if intensity < 0.02 {
-        return;
-    }
+    // Barra de progresso horizontal
+    let bar_x = 20.0;
+    let bar_y = h - 28.0;
+    let bar_w = w - 40.0;
+    let bar_h = 8.0;
 
-    // Paleta CSS
-    let orange_dark: (f64, f64, f64) = (0.831, 0.200, 0.000); // #d43300
-    let orange: (f64, f64, f64) = (0.937, 0.353, 0.000); // #ef5a00
-    let orange_bright: (f64, f64, f64) = (1.000, 0.471, 0.000); // #ff7800
-    let shadow: (f64, f64, f64) = (0.831, 0.200, 0.133); // #d43322
-
-    // Caixa do fogo: ~75% da menor dimensão, posicionada à esquerda (atrás do número).
-    let fsize = w.min(h) * 1.05;
-    let fcx = w * 0.32;
-    let fcy = h * 0.60;
-    let fox = fcx - fsize * 0.5; // origin top-left
-    let foy = fcy - fsize * 0.5;
-
-    // Ciclos de tempo normalizados [0,1)
-    // (phase incrementa ~0.606/s)
-    let per_sec = 0.606_f64;
-    let cyc = |secs: f64, offset: f64| ((phase * per_sec / secs) + offset).rem_euclid(1.0);
-    let t_center = cyc(3.0, 0.0);
-    let t_shake_r = cyc(2.0, 0.0);
-    let t_shake_l = cyc(3.0, 0.33);
-    let t_glow = cyc(2.0, 0.0);
-    let t_part_c = cyc(2.0, 0.15);
-    let t_part_r = cyc(2.0, 0.55);
-    let t_part_l = cyc(3.0, 0.20);
-
-    let (cs_x, cs_y) = center_scale_kf(t_center);
-    let (lskew, lscale) = shake_kf(t_shake_l);
-    let (rskew, rscale) = shake_kf(t_shake_r);
-
-    // Glow anima cor entre ef5a00 ↔ ff7800 (bottom)
-    let gk = ((t_glow * 2.0 * PI).sin() + 1.0) * 0.5;
-    let bottom_col = (
-        orange.0 + (orange_bright.0 - orange.0) * gk,
-        orange.1 + (orange_bright.1 - orange.1) * gk,
-        orange.2 + (orange_bright.2 - orange.2) * gk,
-    );
-
-    // ===== fire-bottom (brasa blurada, alinhada ao centro-baixo) =====
-    // CSS: top:30%, left:20%, width:75%, height:75%, blur(10px)
-    {
-        let bw = fsize * 0.75;
-        let bh = fsize * 0.75;
-        let bcx = fox + fsize * 0.2 + bw * 0.5;
-        let bcy = foy + fsize * 0.3 + bh * 0.5;
-        // Simula blur(10px) com múltiplas camadas ampliadas + semitransparentes
-        for i in 0..6 {
-            let s = 1.0 + (i as f64) * 0.12;
-            let a = (0.32 / (i as f64 + 1.0)) * intensity;
-            draw_flame(cr, bcx, bcy, bw, bh, 0.8 * s, s, 0.0, bottom_col, a);
-        }
-        // Núcleo
-        draw_flame(
-            cr,
-            bcx,
-            bcy,
-            bw,
-            bh,
-            0.8,
-            1.0,
-            0.0,
-            bottom_col,
-            0.85 * intensity,
-        );
-    }
-
-    // ===== fire-left (shake 3s) =====
-    // CSS: top:15%, left:-20%, width:80%, height:80%
-    {
-        let lw = fsize * 0.8;
-        let lh = fsize * 0.8;
-        let lcx = fox + fsize * -0.2 + lw * 0.5;
-        let lcy = foy + fsize * 0.15 + lh * 0.5;
-        // drop-shadow simulado (glow)
-        for i in 0..4 {
-            let s = 1.0 + (i as f64 + 1.0) * 0.1;
-            let a = (0.38 / (i as f64 + 1.0)) * intensity;
-            draw_flame(
-                cr,
-                lcx,
-                lcy,
-                lw,
-                lh,
-                0.8 * s * lscale,
-                s * lscale,
-                lskew,
-                shadow,
-                a,
-            );
-        }
-        // corpo principal
-        draw_flame(
-            cr,
-            lcx,
-            lcy,
-            lw,
-            lh,
-            0.8 * lscale,
-            lscale,
-            lskew,
-            orange,
-            intensity,
-        );
-
-        // particle-fire: top:10%, left:20%, 10% size, ciclo 3s
-        let px = fox + fsize * 0.2;
-        let py = foy + fsize * 0.1;
-        draw_fire_particle(cr, px, py, fsize * 0.1, fsize, t_part_l, orange, intensity);
-    }
-
-    // ===== fire-right (shake 2s) =====
-    // CSS: top:15%, right:-25% (=> left 45%), width:80%, height:80%
-    {
-        let rw = fsize * 0.8;
-        let rh = fsize * 0.8;
-        let rcx = fox + fsize * 0.45 + rw * 0.5;
-        let rcy = foy + fsize * 0.15 + rh * 0.5;
-        for i in 0..4 {
-            let s = 1.0 + (i as f64 + 1.0) * 0.1;
-            let a = (0.38 / (i as f64 + 1.0)) * intensity;
-            draw_flame(
-                cr,
-                rcx,
-                rcy,
-                rw,
-                rh,
-                0.8 * s * rscale,
-                s * rscale,
-                rskew,
-                shadow,
-                a,
-            );
-        }
-        draw_flame(
-            cr,
-            rcx,
-            rcy,
-            rw,
-            rh,
-            0.8 * rscale,
-            rscale,
-            rskew,
-            orange,
-            intensity,
-        );
-
-        // particle-fire: top:45%, left:50%, 15px size, ciclo 2s
-        let px = fox + fsize * 0.5;
-        let py = foy + fsize * 0.45;
-        draw_fire_particle(cr, px, py, fsize * 0.13, fsize, t_part_r, orange, intensity);
-    }
-
-    // ===== fire-center (scaleUpDown 3s) =====
-    // CSS: width/height 100%, main-fire com radial-gradient
-    {
-        let ccx = fox + fsize * 0.5;
-        let ccy = foy + fsize * 0.5;
-        // glow drop-shadow
-        for i in 0..4 {
-            let s = 1.0 + (i as f64 + 1.0) * 0.1;
-            let a = (0.35 / (i as f64 + 1.0)) * intensity;
-            draw_flame(
-                cr,
-                ccx,
-                ccy,
-                fsize,
-                fsize,
-                0.8 * s * cs_x,
-                s * cs_y,
-                0.0,
-                shadow,
-                a,
-            );
-        }
-        // corpo com gradiente radial (farthest-corner at 10px 0 → d43300 a ef5a00)
-        draw_flame_radial(
-            cr,
-            ccx,
-            ccy,
-            fsize,
-            fsize,
-            0.8 * cs_x,
-            cs_y,
-            orange_dark,
-            orange,
-            intensity,
-        );
-
-        // particle-fire: top:60%, left:45%, 10px, ciclo 2s
-        let px = fox + fsize * 0.45;
-        let py = foy + fsize * 0.6;
-        draw_fire_particle(cr, px, py, fsize * 0.1, fsize, t_part_c, orange, intensity);
-    }
-}
-
-/// Desenha o shape de chama (teardrop com canto superior-esquerdo afiado), transformado.
-/// Transformações aplicadas: translate(cx,cy) · skewX(skew_x) · rotate(45°) · scale(scale_x, scale_y)
-#[allow(clippy::too_many_arguments)]
-fn draw_flame(
-    cr: &gtk4::cairo::Context,
-    cx: f64,
-    cy: f64,
-    w: f64,
-    h: f64,
-    scale_x: f64,
-    scale_y: f64,
-    skew_x: f64,
-    color: (f64, f64, f64),
-    alpha: f64,
-) {
-    if alpha <= 0.0 {
-        return;
-    }
-    let _ = cr.save();
-    cr.translate(cx, cy);
-    if skew_x.abs() > 1e-4 {
-        let m = gtk4::cairo::Matrix::new(1.0, 0.0, skew_x, 1.0, 0.0, 0.0);
-        cr.transform(m);
-    }
-    cr.rotate(PI / 4.0);
-    cr.scale(scale_x, scale_y);
-    flame_path(cr, w, h);
-    cr.set_source_rgba(color.0, color.1, color.2, alpha);
-    let _ = cr.fill();
-    let _ = cr.restore();
-}
-
-/// Versão do flame com gradiente radial interno (imita CSS radial-gradient).
-#[allow(clippy::too_many_arguments)]
-fn draw_flame_radial(
-    cr: &gtk4::cairo::Context,
-    cx: f64,
-    cy: f64,
-    w: f64,
-    h: f64,
-    scale_x: f64,
-    scale_y: f64,
-    c0: (f64, f64, f64),
-    c1: (f64, f64, f64),
-    alpha: f64,
-) {
-    if alpha <= 0.0 {
-        return;
-    }
-    let _ = cr.save();
-    cr.translate(cx, cy);
-    cr.rotate(PI / 4.0);
-    cr.scale(scale_x, scale_y);
-    flame_path(cr, w, h);
-    // farthest-corner at 10px 0 (canto superior-direito da versão não-rotada)
-    let grad = gtk4::cairo::RadialGradient::new(-w * 0.35, -h * 0.45, 1.0, 0.0, 0.0, w.max(h));
-    grad.add_color_stop_rgba(0.0, c0.0, c0.1, c0.2, alpha);
-    grad.add_color_stop_rgba(0.95, c1.0, c1.1, c1.2, alpha);
-    let _ = cr.set_source(&grad);
-    let _ = cr.fill();
-    let _ = cr.restore();
-}
-
-/// Path do shape de chama, centralizado em (0,0).
-/// Corresponde a border-radius: 0 40% 60% 40% (canto TL afiado).
-fn flame_path(cr: &gtk4::cairo::Context, w: f64, h: f64) {
-    let hw = w * 0.5;
-    let hh = h * 0.5;
-    let r_tr = w * 0.4;
-    let r_br = w * 0.6;
-    let r_bl = w * 0.4;
-
-    // Canto TL afiado
-    cr.move_to(-hw, -hh);
-    // Aresta superior → TR (arredondado 40%)
-    cr.line_to(hw - r_tr, -hh);
-    cr.arc(hw - r_tr, -hh + r_tr, r_tr, -PI / 2.0, 0.0);
-    // Aresta direita → BR (arredondado 60%)
-    cr.line_to(hw, hh - r_br);
-    cr.arc(hw - r_br, hh - r_br, r_br, 0.0, PI / 2.0);
-    // Aresta inferior → BL (arredondado 40%)
-    cr.line_to(-hw + r_bl, hh);
-    cr.arc(-hw + r_bl, hh - r_bl, r_bl, PI / 2.0, PI);
-    // Volta para TL afiado
-    cr.line_to(-hw, -hh);
-    cr.close_path();
-}
-
-/// Partícula que sobe. t ∈ [0,1]; parâmetros de opacity/scale/top seguem o `@keyframes particleUp` do CSS.
-#[allow(clippy::too_many_arguments)]
-fn draw_fire_particle(
-    cr: &gtk4::cairo::Context,
-    start_x: f64,
-    start_y: f64,
-    size: f64,
-    container_h: f64,
-    t: f64,
-    color: (f64, f64, f64),
-    intensity: f64,
-) {
-    if intensity < 0.02 {
-        return;
-    }
-    // Opacidade: 0% -> 0, 20%-80% -> 1, 100% -> 0
-    let a = if t < 0.2 {
-        t / 0.2
-    } else if t < 0.8 {
-        1.0
+    // Track de fundo
+    if is_light {
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.08);
     } else {
-        (1.0 - t) / 0.2
-    };
-    // top vai de start_y até start_y - container_h * 1.6 (bem acima do container)
-    let rise = container_h * 1.6 * t;
-    let y = start_y - rise;
-    // Scale: 1 → 0.5 ao final
-    let scale = 1.0 - t * 0.5;
-    let r = size * 0.5 * scale;
-    let alpha = a * intensity;
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
+    }
+    rounded_rect(cr, bar_x, bar_y, bar_w, bar_h, 4.0);
+    let _ = cr.fill();
 
-    // drop-shadow simulado
-    for i in 0..3 {
-        let rr = r * (1.0 + (i as f64 + 1.0) * 0.45);
-        let aa = alpha * (0.35 / (i as f64 + 1.0));
-        cr.set_source_rgba(color.0, color.1, color.2, aa);
-        cr.arc(start_x, y, rr, 0.0, 2.0 * PI);
+    // Fill proporcional (20°C a 100°C)
+    let frac = ((temp_c - 20.0) / 80.0).clamp(0.0, 1.0);
+    if frac > 0.01 {
+        cr.set_source_rgb(rc, gc, bc);
+        rounded_rect(cr, bar_x, bar_y, bar_w * frac, bar_h, 4.0);
         let _ = cr.fill();
     }
-    // Núcleo
-    cr.set_source_rgba(color.0, color.1, color.2, alpha * 0.95);
-    cr.arc(start_x, y, r, 0.0, 2.0 * PI);
-    let _ = cr.fill();
-}
-
-/// Keyframes do `scaleUpDown` (3s): 0% 1,1 → 50% 1,1.1 → 75% 1,0.95 → 80% 0.95,0.95 → 90% 1,1.1 → 100% 1,1.
-fn center_scale_kf(t: f64) -> (f64, f64) {
-    let keys: &[(f64, f64, f64)] = &[
-        (0.00, 1.00, 1.00),
-        (0.50, 1.00, 1.10),
-        (0.75, 1.00, 0.95),
-        (0.80, 0.95, 0.95),
-        (0.90, 1.00, 1.10),
-        (1.00, 1.00, 1.00),
-    ];
-    for i in 0..keys.len() - 1 {
-        let (t0, x0, y0) = keys[i];
-        let (t1, x1, y1) = keys[i + 1];
-        if t >= t0 && t <= t1 {
-            let k = if t1 > t0 { (t - t0) / (t1 - t0) } else { 0.0 };
-            // easing "ease-out" simplificado (1 - (1-k)^2)
-            let e = 1.0 - (1.0 - k).powi(2);
-            return (x0 + (x1 - x0) * e, y0 + (y1 - y0) * e);
-        }
-    }
-    (1.0, 1.0)
-}
-
-/// Keyframes do `shake`: 0% skew 0 scale 1 → 50% skew 5deg scale 0.9 → 100% skew 0 scale 1.
-fn shake_kf(t: f64) -> (f64, f64) {
-    let k = if t < 0.5 { t / 0.5 } else { (1.0 - t) / 0.5 };
-    let e = 1.0 - (1.0 - k).powi(2);
-    let skew = 0.0872665_f64 * e; // 5° em rad
-    let scale = 1.0 - 0.1 * e;
-    (skew, scale)
 }
 
 /// Donut de VRAM
@@ -1869,17 +1468,23 @@ fn draw_vram_donut(
     h: f64,
     gpu: &Option<crate::hardware::gpu::GpuMetrics>,
     pct_shown: f64,
-    phase: f64,
+    _phase: f64,
 ) {
     let cx = w / 2.0;
     let cy = h / 2.0;
     let r = w.min(h) / 2.0 - 22.0;
     let fraction = (pct_shown / 100.0).clamp(0.0, 1.0);
 
-    // Ring dashed base
-    cr.set_line_width(14.0);
-    cr.set_dash(&[5.0, 3.0], 0.0);
-    cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
+    let is_light = crate::ui::brand_theme::is_light_mode();
+
+    // Track
+    cr.set_line_width(12.0);
+    cr.set_dash(&[], 0.0);
+    if is_light {
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.08);
+    } else {
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
+    }
     cr.arc(cx, cy, r, 0.0, 2.0 * PI);
     let _ = cr.stroke();
 
@@ -1887,37 +1492,30 @@ fn draw_vram_donut(
         let (rc, gc, bc) = if fraction < 0.6 {
             (0.22, 0.68, 1.0)
         } else if fraction < 0.85 {
-            (0.95, 0.7, 0.1)
+            (0.85, 0.50, 0.05)
         } else {
-            (0.95, 0.25, 0.2)
+            (0.93, 0.26, 0.22)
         };
-        let pulse = 0.8 + 0.2 * ((phase * TAU).sin() * 0.5 + 0.5);
-        // Glow
-        for gi in 0..3 {
-            let alpha = (0.18 / (gi as f64 + 1.0)) * pulse;
-            cr.set_source_rgba(rc, gc, bc, alpha);
-            cr.set_line_width(14.0 + (gi as f64 + 1.0) * 3.0);
-            cr.set_dash(&[], 0.0);
-            cr.arc(cx, cy, r, -PI / 2.0, -PI / 2.0 + fraction * 2.0 * PI);
-            let _ = cr.stroke();
-        }
-        // Main
         cr.set_source_rgba(rc, gc, bc, 1.0);
-        cr.set_line_width(14.0);
-        cr.set_dash(&[5.0, 3.0], 0.0);
+        cr.set_line_width(12.0);
+        cr.set_line_cap(gtk4::cairo::LineCap::Round);
         cr.arc(cx, cy, r, -PI / 2.0, -PI / 2.0 + fraction * 2.0 * PI);
         let _ = cr.stroke();
     }
 
     cr.set_dash(&[], 0.0);
     // Texto central: %
-    cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+    if is_light {
+        cr.set_source_rgba(0.06, 0.09, 0.16, 1.0);
+    } else {
+        cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+    }
     cr.select_font_face(
-        "Sans",
+        "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Ubuntu', sans-serif",
         gtk4::cairo::FontSlant::Normal,
         gtk4::cairo::FontWeight::Bold,
     );
-    cr.set_font_size(32.0);
+    cr.set_font_size(30.0);
     let txt = format!("{:.0}%", pct_shown);
     if let Ok(ext) = cr.text_extents(&txt) {
         cr.move_to(cx - ext.width() / 2.0, cy);
