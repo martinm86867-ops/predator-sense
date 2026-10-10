@@ -212,16 +212,27 @@ fn parse_gpu_metrics(contents: &str) -> Option<GpuMetrics> {
     }
     let parse_u32 = |s: &str| parse_optional_u32(s).unwrap_or(0);
     let parse_f64 = |s: &str| {
-        s.trim()
+        let cleaned = s
+            .trim()
             .replace(" W", "")
             .replace(" C", "")
-            .replace("[N/A]", "0")
-            .parse::<f64>()
-            .unwrap_or(0.0)
+            .replace("[N/A]", "0");
+        if cleaned.starts_with('[') || cleaned.contains("ERR") || cleaned.contains("requires reset") {
+            0.0
+        } else {
+            cleaned.parse::<f64>().unwrap_or(0.0)
+        }
     };
 
+    // If the GPU hardware is wedged (e.g. GSP firmware timeout / Xid 154),
+    // nvidia-smi returns literal bracketed error tokens like "[GPU requires reset]".
+    // In that state, mark live as false so UI does not display misleading zeros or crash.
+    let is_hardware_locked = p[2].contains("requires reset")
+        || p[6].contains("requires reset")
+        || p.iter().any(|field| field.contains("[GPU requires reset]"));
+
     Some(GpuMetrics {
-        live: true,
+        live: !is_hardware_locked,
         name: p[0].into(),
         driver: p[1].into(),
         vbios: p[2].into(),
@@ -250,14 +261,17 @@ fn parse_gpu_metrics(contents: &str) -> Option<GpuMetrics> {
 }
 
 fn parse_optional_u32(value: &str) -> Option<u32> {
-    value
+    let cleaned = value
         .trim()
         .replace(" MiB", "")
         .replace(" MHz", "")
         .replace(" W", "")
-        .replace(" %", "")
-        .parse()
-        .ok()
+        .replace(" %", "");
+    if cleaned.starts_with('[') || cleaned.contains("ERR") || cleaned.contains("requires reset") {
+        None
+    } else {
+        cleaned.parse().ok()
+    }
 }
 
 /// Set GPU power limit (TGP) in watts via the helper (nvidia-smi -pl, root).
@@ -385,6 +399,19 @@ mod tests {
     #[test]
     fn rejects_truncated_live_sample() {
         assert!(parse_gpu_metrics("NVIDIA GPU, 610.43.03, 8192\n").is_none());
+    }
+
+    #[test]
+    fn handles_gpu_hardware_locked_sample_gracefully() {
+        let locked_sample = "NVIDIA GeForce RTX 3070 Laptop GPU, 595.99.02, [GPU requires reset], \
+                             8192, 13, 7830, [GPU requires reset], [N/A], [N/A], [N/A], [N/A], \
+                             [N/A], [N/A], [N/A], [N/A], [N/A], [GPU requires reset], \
+                             [GPU requires reset], [N/A], [N/A], [N/A], [N/A]\n";
+        let metrics = parse_gpu_metrics(locked_sample).unwrap();
+        assert!(!metrics.live);
+        assert_eq!(metrics.name, "NVIDIA GeForce RTX 3070 Laptop GPU");
+        assert_eq!(metrics.driver, "595.99.02");
+        assert_eq!(metrics.temp, 0.0);
     }
 
     #[test]

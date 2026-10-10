@@ -31,9 +31,14 @@ pub struct GpuInfo {
 
 pub fn read_all_sensors() -> SensorData {
     let gpu_info = read_nvidia_gpu_info();
+    let gpu_temp = gpu_info.temp.or_else(|| {
+        // When discrete NVIDIA GPU is suspended or in hardware reset lock,
+        // check ACPI thermal zone SEN2 (GPU substrate temp on Acer Predator / Helios laptops).
+        find_thermal("SEN2")
+    });
     SensorData {
         cpu_temp: read_cpu_temperature(),
-        gpu_temp: gpu_info.temp,
+        gpu_temp,
         system_temp: read_system_temperature(),
         cpu_fan_rpm: read_fan("fan1_input"),
         gpu_fan_rpm: read_fan("fan2_input"),
@@ -87,7 +92,7 @@ fn read_cpu_temperature() -> Option<f64> {
 /// CPU is from hwmon (cheap); GPU reuses the cached nvidia-smi result.
 pub fn read_critical_temps() -> (Option<f64>, Option<f64>) {
     let cpu = read_cpu_temperature();
-    let gpu = read_nvidia_gpu_info().temp;
+    let gpu = read_nvidia_gpu_info().temp.or_else(|| find_thermal("SEN2"));
     (cpu, gpu)
 }
 
