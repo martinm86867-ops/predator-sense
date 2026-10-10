@@ -73,19 +73,29 @@ pub fn build() -> gtk::Box {
 
     page.append(&header);
 
-    // === IPs: local (instant, from the OS routing table) + public (needs a
-    // network round-trip, so it's fetched on a background thread and starts
-    // on a placeholder like every other async-populated label in this app).
-    let ip_row = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    ip_row.set_margin_top(2);
+    // === IPs & Connection Telemetry Row ===
+    let ip_row = gtk::Box::new(gtk::Orientation::Horizontal, 24);
+    ip_row.set_margin_top(4);
     let (local_ip_box, _local_ip_label) = ip_stat(
         crate::i18n::t("local_ip"),
         local_ip().as_deref().unwrap_or("--"),
     );
     let (public_ip_box, public_ip_label) =
         ip_stat(crate::i18n::t("public_ip"), crate::i18n::t("checking"));
+
+    let (gw, sig_dbm, _link_qual) = get_network_details(&iface);
+    let (gateway_box, _gateway_label) = ip_stat("Gateway", &gw);
+    let signal_str = if sig_dbm != 0 {
+        format!("{} dBm", sig_dbm)
+    } else {
+        "Wired".into()
+    };
+    let (signal_box, _signal_label) = ip_stat("Signal", &signal_str);
+
     ip_row.append(&local_ip_box);
     ip_row.append(&public_ip_box);
+    ip_row.append(&gateway_box);
+    ip_row.append(&signal_box);
     page.append(&ip_row);
 
     background::run(fetch_public_ip, move |result| {
@@ -476,6 +486,40 @@ fn fetch_public_ip() -> Option<String> {
     (!ip.is_empty() && ip.parse::<std::net::IpAddr>().is_ok()).then(|| ip.to_string())
 }
 
+fn get_network_details(iface: &str) -> (String, i32, i32) {
+    let mut signal_dbm = 0;
+    let mut link_quality = 0;
+    if let Ok(wireless) = fs::read_to_string("/proc/net/wireless") {
+        for line in wireless.lines() {
+            if line.contains(iface) {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 4 {
+                    link_quality = parts[2].trim_end_matches('.').parse().unwrap_or(0);
+                    signal_dbm = parts[3].trim_end_matches('.').parse().unwrap_or(0);
+                }
+            }
+        }
+    }
+
+    let gateway = fs::read_to_string("/proc/net/route")
+        .ok()
+        .and_then(|r| {
+            for line in r.lines() {
+                let p: Vec<&str> = line.split_whitespace().collect();
+                if p.len() >= 3 && p[0] == iface && p[1] == "00000000" {
+                    if let Ok(num) = u32::from_str_radix(p[2], 16) {
+                        let bytes = num.to_le_bytes();
+                        return Some(format!("{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3]));
+                    }
+                }
+            }
+            None
+        })
+        .unwrap_or_else(|| "--".into());
+
+    (gateway, signal_dbm, link_quality)
+}
+
 fn format_iface_label(iface: &str) -> String {
     if iface.is_empty() {
         crate::i18n::t("no_active_interface").into()
@@ -538,16 +582,22 @@ fn draw_net_graph(
     history: &VecDeque<f64>,
     color: (f64, f64, f64),
 ) {
-    let m = 4.0;
+    let m = 6.0;
     let gw = w - m * 2.0;
     let gh = h - m * 2.0;
 
+    let is_light = crate::ui::brand_theme::is_light_mode();
     crate::ui::brand_theme::set_surface_source(cr);
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 
-    cr.set_source_rgba(1.0, 1.0, 1.0, 0.05);
-    cr.set_line_width(0.5);
+    // Grid lines
+    if is_light {
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.06);
+    } else {
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.06);
+    }
+    cr.set_line_width(0.8);
     cr.set_dash(&[], 0.0);
     for i in 0..=4 {
         let y = m + gh * (i as f64 / 4.0);
@@ -569,7 +619,12 @@ fn draw_net_graph(
     };
     let sx = m + (HISTORY_SIZE - n) as f64 * step;
 
-    cr.set_source_rgba(color.0, color.1, color.2, 0.18);
+    // Gradient area fill
+    let fill_grad = gtk4::cairo::LinearGradient::new(0.0, m, 0.0, m + gh);
+    fill_grad.add_color_stop_rgba(0.0, color.0, color.1, color.2, 0.28);
+    fill_grad.add_color_stop_rgba(1.0, color.0, color.1, color.2, 0.02);
+    let _ = cr.set_source(&fill_grad);
+
     cr.move_to(sx, m + gh);
     for (i, &v) in history.iter().enumerate() {
         let x = sx + i as f64 * step;
@@ -580,8 +635,11 @@ fn draw_net_graph(
     cr.close_path();
     let _ = cr.fill();
 
-    cr.set_source_rgba(color.0, color.1, color.2, 1.0);
-    cr.set_line_width(1.6);
+    // Clean antialiased stroke
+    cr.set_source_rgb(color.0, color.1, color.2);
+    cr.set_line_width(2.0);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    cr.set_line_join(gtk4::cairo::LineJoin::Round);
     for (i, &v) in history.iter().enumerate() {
         let x = sx + i as f64 * step;
         let y = m + gh - (v / max_val).clamp(0.0, 1.0) * gh;
@@ -595,16 +653,20 @@ fn draw_net_graph(
 
     // Valor atual (no canto superior direito)
     if let Some(&last) = history.back() {
-        cr.set_source_rgba(1.0, 1.0, 1.0, 0.85);
+        if is_light {
+            cr.set_source_rgba(0.06, 0.09, 0.16, 0.9);
+        } else {
+            cr.set_source_rgba(0.95, 0.96, 0.98, 0.9);
+        }
         cr.select_font_face(
-            "Sans",
+            "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Ubuntu', sans-serif",
             gtk4::cairo::FontSlant::Normal,
             gtk4::cairo::FontWeight::Bold,
         );
-        cr.set_font_size(11.0);
+        cr.set_font_size(12.0);
         let txt = format_speed(last);
         if let Ok(ext) = cr.text_extents(&txt) {
-            cr.move_to(w - ext.width() - 6.0, 14.0);
+            cr.move_to(w - ext.width() - 8.0, 16.0);
             let _ = cr.show_text(&txt);
         }
     }
@@ -618,40 +680,36 @@ fn draw_flow_animation(
     h: f64,
     kbps: f64,
     color: (f64, f64, f64),
-    phase: f64,
+    _phase: f64,
     download: bool,
 ) {
-    // Trilho de fundo
-    cr.set_source_rgba(0.1, 0.1, 0.12, 1.0);
-    cr.rectangle(0.0, 0.0, w, h);
+    let is_light = crate::ui::brand_theme::is_light_mode();
+    // Clean track
+    if is_light {
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.06);
+    } else {
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.06);
+    }
+    rounded_rect(cr, 0.0, h / 2.0 - 3.0, w, 6.0, 3.0);
     let _ = cr.fill();
 
-    // Intensidade: 0 quando ocioso, 1 quando > 2 MB/s
+    // Activity bar
     let intensity = (kbps / 2048.0).clamp(0.0, 1.0);
-    let n_particles: i32 = (4.0 + 10.0 * intensity) as i32;
-    let speed = 0.5 + 3.5 * intensity;
-
-    let cy = h / 2.0;
-    for i in 0..n_particles {
-        let base = i as f64 / n_particles as f64;
-        let mut t = (base + phase * speed) % 1.0;
-        if !download {
-            t = 1.0 - t;
-        }
-        let x = t * w;
-        let alpha = (1.0 - (t - 0.5).abs() * 2.0).max(0.0);
-        let a = 0.3 + 0.7 * alpha * (0.3 + 0.7 * intensity);
-        cr.set_source_rgba(color.0, color.1, color.2, a);
-        let r = 2.5 + 1.5 * intensity;
-        cr.arc(x, cy, r, 0.0, std::f64::consts::PI * 2.0);
+    if intensity > 0.005 {
+        cr.set_source_rgba(color.0, color.1, color.2, 0.85);
+        let bar_w = (w * intensity).max(8.0);
+        let bar_x = if download { 0.0 } else { w - bar_w };
+        rounded_rect(cr, bar_x, h / 2.0 - 3.0, bar_w, 6.0, 3.0);
         let _ = cr.fill();
     }
+}
 
-    // Barra fina no fundo proporcional a intensidade
-    cr.set_source_rgba(color.0, color.1, color.2, 0.5);
-    let bar_h = 2.0;
-    let bar_w = w * intensity;
-    let bar_x = if download { 0.0 } else { w - bar_w };
-    cr.rectangle(bar_x, h - bar_h, bar_w, bar_h);
-    let _ = cr.fill();
+fn rounded_rect(cr: &gtk4::cairo::Context, x: f64, y: f64, w: f64, h: f64, r: f64) {
+    let r = r.min(w / 2.0).min(h / 2.0);
+    cr.new_sub_path();
+    cr.arc(x + w - r, y + r, r, -std::f64::consts::FRAC_PI_2, 0.0);
+    cr.arc(x + w - r, y + h - r, r, 0.0, std::f64::consts::FRAC_PI_2);
+    cr.arc(x + r, y + h - r, r, std::f64::consts::FRAC_PI_2, std::f64::consts::PI);
+    cr.arc(x + r, y + r, r, std::f64::consts::PI, 3.0 * std::f64::consts::FRAC_PI_2);
+    cr.close_path();
 }

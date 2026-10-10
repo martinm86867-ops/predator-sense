@@ -708,7 +708,7 @@ scrollbar slider:hover {
 }
 
 .temp-graph {
-    background-color: #0c1016;
+    background-color: @bg_card;
     border: 1px solid @border_dim;
     border-radius: 12px;
 }
