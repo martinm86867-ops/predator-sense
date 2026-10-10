@@ -49,15 +49,35 @@ pub fn brand_css(css: &str) -> Cow<'_, str> {
 /// `CssProvider`, both at startup and on every reapply.
 pub fn theme_css(css: &str) -> Cow<'_, str> {
     let based = brand_css(css);
-    let Some(profile) = active_profile() else {
-        return based;
-    };
-    let from = if sysinfo::is_nitro_brand() {
-        &NITRO_SET
+    let with_profile = if let Some(profile) = active_profile() {
+        let from = if sysinfo::is_nitro_brand() {
+            &NITRO_SET
+        } else {
+            &PREDATOR_SET
+        };
+        recolor(&based, from, &profile_color_set(profile))
     } else {
-        &PREDATOR_SET
+        based.into_owned()
     };
-    Cow::Owned(recolor(&based, from, &profile_color_set(profile)))
+
+    if is_light_mode() {
+        Cow::Owned(apply_light_palette(&with_profile))
+    } else {
+        Cow::Owned(with_profile)
+    }
+}
+
+fn apply_light_palette(css: &str) -> String {
+    css.replace("@define-color bg_body #0b0e13;", "@define-color bg_body #f0f2f5;")
+        .replace("@define-color bg_dark #10141b;", "@define-color bg_dark #e4e7eb;")
+        .replace("@define-color bg_panel #141922;", "@define-color bg_panel #ffffff;")
+        .replace("@define-color bg_card #181e27;", "@define-color bg_card #ffffff;")
+        .replace("@define-color bg_raised #1d2430;", "@define-color bg_raised #eef1f4;")
+        .replace("@define-color border_dim rgba(255, 255, 255, 0.07);", "@define-color border_dim rgba(0, 0, 0, 0.08);")
+        .replace("@define-color border_mid rgba(255, 255, 255, 0.12);", "@define-color border_mid rgba(0, 0, 0, 0.15);")
+        .replace("@define-color text_main #f2f5f8;", "@define-color text_main #1a202c;")
+        .replace("@define-color text_muted #8b95a3;", "@define-color text_muted #64748b;")
+        .replace("@define-color text_label #aeb7c2;", "@define-color text_label #475569;")
 }
 
 fn recolor(css: &str, from: &ColorSet, to: &ColorSet) -> String {
@@ -97,6 +117,15 @@ thread_local! {
     /// on the main thread, and `Cell` (unlike a `Mutex`) needs no locking
     /// for that single-threaded access.
     static ACTIVE_PROFILE: Cell<Option<crate::hardware::profile::PowerProfile>> = const { Cell::new(None) };
+    static IS_LIGHT_MODE: Cell<bool> = const { Cell::new(false) };
+}
+
+pub fn set_light_mode(light: bool) {
+    IS_LIGHT_MODE.with(|cell| cell.set(light));
+}
+
+pub fn is_light_mode() -> bool {
+    IS_LIGHT_MODE.with(|cell| cell.get())
 }
 
 /// Sets which mode's color the app-wide theme should follow from now on.
@@ -130,11 +159,15 @@ pub fn accent() -> Accent {
     })
 }
 
-/// The app's dark "surface" color (cards, graph fills, keyboard preview) as an
+/// The app's "surface" color (cards, graph fills, keyboard preview) as an
 /// opaque Cairo source. One definition instead of the same rgba literal
-/// repeated across draw functions.
+/// repeated across draw functions. Adapts automatically to dark/light mode.
 pub fn set_surface_source(cr: &gtk4::cairo::Context) {
-    cr.set_source_rgb(0.047, 0.063, 0.086);
+    if is_light_mode() {
+        cr.set_source_rgb(0.96, 0.97, 0.98);
+    } else {
+        cr.set_source_rgb(0.047, 0.063, 0.086);
+    }
 }
 
 /// Bright accent as a CSS/Pango hex string, for the handful of spots that

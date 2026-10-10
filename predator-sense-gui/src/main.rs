@@ -88,6 +88,18 @@ pub fn apply_font_scale(scale: f64) {
     reload_css(scale);
 }
 
+pub fn apply_theme_mode(app: &adw::Application, mode: &str) {
+    let is_light = mode == "light";
+    ui::brand_theme::set_light_mode(is_light);
+    let scheme = if is_light {
+        adw::ColorScheme::ForceLight
+    } else {
+        adw::ColorScheme::ForceDark
+    };
+    app.style_manager().set_color_scheme(scheme);
+    reload_css(config::load_app_config().font_scale);
+}
+
 /// Records which mode's color the app should use from now on and
 /// re-applies the stylesheet immediately - the CSS half of a live theme
 /// change. `ui::window`'s profile watcher calls this once at startup (so a
@@ -142,14 +154,18 @@ fn main() {
 
     app.connect_startup(|app| {
         startup_mark("startup signal");
-        // The application uses a deliberately dark, content-matched palette.
-        // Request it through libadwaita instead of GTK's deprecated dark-theme
-        // setting so standard Adwaita widgets use the same appearance.
+        let cfg = config::load_app_config();
+        let is_light = cfg.theme_mode == "light";
+        ui::brand_theme::set_light_mode(is_light);
         app.style_manager()
-            .set_color_scheme(adw::ColorScheme::ForceDark);
+            .set_color_scheme(if is_light {
+                adw::ColorScheme::ForceLight
+            } else {
+                adw::ColorScheme::ForceDark
+            });
         register_predator_font();
         let provider = gtk::CssProvider::new();
-        let scale = config::load_app_config().font_scale;
+        let scale = cfg.font_scale;
         provider.load_from_data(&ui::font_scale::scale_css(
             &ui::brand_theme::theme_css(CSS_THEME),
             scale,

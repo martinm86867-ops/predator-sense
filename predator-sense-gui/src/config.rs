@@ -275,6 +275,9 @@ pub struct AppConfig {
     /// this holds still).
     #[serde(default)]
     pub keep_default_theme_color: bool,
+    /// Theme mode: "dark" (default), "light", or "system".
+    #[serde(default = "default_theme_mode")]
+    pub theme_mode: String,
     /// Opt-out for CPU governor/EPP/turbo/min_perf_pct management (issue #57,
     /// dathide): some users run a separate CPU tuning tool (e.g. `tuned`
     /// with a custom profile) that writes those exact same sysfs files, so
@@ -285,6 +288,10 @@ pub struct AppConfig {
     /// keeps working as before.
     #[serde(default = "default_true")]
     pub manage_cpu_power: bool,
+}
+
+fn default_theme_mode() -> String {
+    "dark".to_string()
 }
 
 fn default_true() -> bool {
@@ -354,6 +361,7 @@ impl Default for AppConfig {
             eco_mode_saved_volume_pct: None,
             eco_mode_saved_brightness_pct: None,
             keep_default_theme_color: false,
+            theme_mode: default_theme_mode(),
             manage_cpu_power: true,
         }
     }

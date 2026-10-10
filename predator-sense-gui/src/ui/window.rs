@@ -67,8 +67,25 @@ pub fn build(app: &adw::Application) {
     title_box.append(&title_s);
     header.set_title_widget(Some(&title_box));
 
-    // Right: icon buttons (settings, minimize, close) drawn as simple labels
-    let controls = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    // Right: icon buttons (theme toggle, minimize, close)
+    let controls = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+
+    let btn_theme = gtk::Button::with_label(if config::load_app_config().theme_mode == "light" { "🌙" } else { "☀️" });
+    btn_theme.add_css_class("window-ctrl-btn");
+    btn_theme.set_tooltip_text(Some("Toggle Dark/Light Mode"));
+    let app_theme = app.clone();
+    let btn_theme_c = btn_theme.clone();
+    let win_theme_c = window.clone();
+    btn_theme.connect_clicked(move |_| {
+        let mut cfg = config::load_app_config();
+        let new_mode = if cfg.theme_mode == "light" { "dark" } else { "light" };
+        cfg.theme_mode = new_mode.to_string();
+        let _ = config::save_app_config(&cfg);
+        crate::apply_theme_mode(&app_theme, new_mode);
+        btn_theme_c.set_label(if new_mode == "light" { "🌙" } else { "☀️" });
+        queue_draw_recursive(win_theme_c.upcast_ref());
+    });
+
     let btn_minimize = gtk::Button::with_label("—");
     btn_minimize.add_css_class("window-ctrl-btn");
     let win_c = window.clone();
@@ -87,6 +104,7 @@ pub fn build(app: &adw::Application) {
         }
     });
 
+    controls.append(&btn_theme);
     controls.append(&btn_minimize);
     controls.append(&btn_close);
     header.pack_end(&controls);
@@ -511,10 +529,15 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
         let wf = w as f64;
         let hf = h as f64;
 
-        // Base vertical gradient: #0b0e13 at top to #0a0d11 at bottom.
+        // Base vertical gradient: adapts to dark/light mode
         let base = gtk4::cairo::LinearGradient::new(0.0, 0.0, 0.0, hf);
-        base.add_color_stop_rgb(0.0, 11.0 / 255.0, 14.0 / 255.0, 19.0 / 255.0);
-        base.add_color_stop_rgb(1.0, 10.0 / 255.0, 13.0 / 255.0, 17.0 / 255.0);
+        if crate::ui::brand_theme::is_light_mode() {
+            base.add_color_stop_rgb(0.0, 240.0 / 255.0, 242.0 / 255.0, 245.0 / 255.0);
+            base.add_color_stop_rgb(1.0, 230.0 / 255.0, 233.0 / 255.0, 238.0 / 255.0);
+        } else {
+            base.add_color_stop_rgb(0.0, 11.0 / 255.0, 14.0 / 255.0, 19.0 / 255.0);
+            base.add_color_stop_rgb(1.0, 10.0 / 255.0, 13.0 / 255.0, 17.0 / 255.0);
+        }
         let _ = cr.set_source(&base);
         cr.rectangle(0.0, 0.0, wf, hf);
         let _ = cr.fill();
@@ -1032,11 +1055,16 @@ fn draw_panel_border(cr: &gtk4::cairo::Context, w: f64, h: f64) {
     let (r, g, b) = crate::ui::brand_theme::accent().bright;
 
     rounded_rect(cr, 0.0, 0.0, w, h, 14.0);
-    // Panel surface: dark, slightly raised.
-    cr.set_source_rgb(0.075, 0.094, 0.122);
+    // Panel surface: adapts to dark/light mode
+    if crate::ui::brand_theme::is_light_mode() {
+        cr.set_source_rgb(1.0, 1.0, 1.0);
+    } else {
+        cr.set_source_rgb(0.075, 0.094, 0.122);
+    }
     let _ = cr.fill_preserve();
     // 1px accent-tinted border.
-    cr.set_source_rgba(r, g, b, 0.16);
+    let alpha = if crate::ui::brand_theme::is_light_mode() { 0.28 } else { 0.16 };
+    cr.set_source_rgba(r, g, b, alpha);
     cr.set_line_width(1.0);
     let _ = cr.stroke();
 }
@@ -1496,6 +1524,25 @@ fn build_settings_page(_app: &adw::Application) -> gtk::ScrolledWindow {
     font_row.append(&font_scale_label);
     font_row.append(&font_scale);
     page.append(&font_row);
+
+    // Dark / Light Mode Selection
+    let theme_row = create_setting_row("Theme Mode", "Switch between Dark and Light appearances.");
+    let theme_dropdown = gtk::DropDown::from_strings(&["Dark", "Light"]);
+    theme_dropdown.set_selected(if cfg.theme_mode == "light" { 1 } else { 0 });
+    theme_dropdown.set_valign(gtk::Align::Center);
+    {
+        let app_c = _app.clone();
+        theme_dropdown.connect_selected_notify(move |dd| {
+            let selected = dd.selected();
+            let mode = if selected == 1 { "light" } else { "dark" };
+            crate::apply_theme_mode(&app_c, mode);
+            let mut c = config::load_app_config();
+            c.theme_mode = mode.to_string();
+            let _ = config::save_app_config(&c);
+        });
+    }
+    theme_row.append(&theme_dropdown);
+    page.append(&theme_row);
 
     // === Hardware Settings Section ===
     let hw_title = gtk::Label::new(Some(t("hw_settings")));

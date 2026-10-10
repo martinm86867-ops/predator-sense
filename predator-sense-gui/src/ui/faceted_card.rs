@@ -162,13 +162,19 @@ fn draw_card(cr: &gtk4::cairo::Context, w: f64, h: f64, accent: (f64, f64, f64),
 
     // Layered surface: slightly lighter at the top, darker at the bottom.
     let fill = gtk4::cairo::LinearGradient::new(0.0, 0.0, 0.0, h);
-    fill.add_color_stop_rgba(0.0, 0.094 + r * 0.030, 0.118 + g * 0.030, 0.153 + b * 0.030, 1.0);
-    fill.add_color_stop_rgba(1.0, 0.078 + r * 0.020, 0.098 + g * 0.020, 0.129 + b * 0.020, 1.0);
+    if crate::ui::brand_theme::is_light_mode() {
+        fill.add_color_stop_rgba(0.0, 1.0, 1.0, 1.0, 1.0);
+        fill.add_color_stop_rgba(1.0, 0.98, 0.98, 0.99, 1.0);
+    } else {
+        fill.add_color_stop_rgba(0.0, 0.094 + r * 0.030, 0.118 + g * 0.030, 0.153 + b * 0.030, 1.0);
+        fill.add_color_stop_rgba(1.0, 0.078 + r * 0.020, 0.098 + g * 0.020, 0.129 + b * 0.020, 1.0);
+    }
     let _ = cr.set_source(&fill);
     let _ = cr.fill_preserve();
 
-    // 1px accent-tinted border - subtle, keeps the brand color without a glow.
-    cr.set_source_rgba(r, g, b, 0.16);
+    // 1px accent-tinted border.
+    let alpha = if crate::ui::brand_theme::is_light_mode() { 0.28 } else { 0.16 };
+    cr.set_source_rgba(r, g, b, alpha);
     cr.set_line_width(1.0);
     let _ = cr.stroke();
 }
