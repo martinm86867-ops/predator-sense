@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 pub struct GpuMetrics {
     /// True when the dynamic fields came from a successful live driver query.
     pub live: bool,
+    pub is_hardware_locked: bool,
     pub name: String,
     pub driver: String,
     pub vbios: String,
@@ -190,6 +191,7 @@ fn static_metrics_with_cached_invariants() -> GpuMetrics {
         metrics.power_limit_w = cached.power_limit_w;
         metrics.power_max_w = cached.power_max_w;
         metrics.power_min_w = cached.power_min_w;
+        metrics.is_hardware_locked = cached.is_hardware_locked;
     }
     metrics
 }
@@ -233,6 +235,7 @@ fn parse_gpu_metrics(contents: &str) -> Option<GpuMetrics> {
 
     Some(GpuMetrics {
         live: !is_hardware_locked,
+        is_hardware_locked,
         name: p[0].into(),
         driver: p[1].into(),
         vbios: p[2].into(),

@@ -564,19 +564,32 @@ pub fn build_modes() -> gtk::Box {
         desc_label.set_max_width_chars(1);
         card.append(&desc_label);
 
-        // Clean modern vector icon for each performance mode
-        let icon_name = match profile_val {
-            PowerProfile::Quiet => "mode_quiet.svg",
-            PowerProfile::Balanced => "mode_balanced.svg",
-            PowerProfile::Performance => "mode_performance.svg",
-            PowerProfile::Turbo => "mode_turbo.svg",
-            PowerProfile::Eco => "mode_eco.svg",
+        // Profile artwork: display the cooling profile image
+        let resource = match profile_val {
+            PowerProfile::Quiet => Some("mode/quiet.png"),
+            PowerProfile::Balanced => Some("mode/balanced.png"),
+            PowerProfile::Performance => Some("mode/performance.png"),
+            PowerProfile::Turbo => Some("mode/turbo.png"),
+            PowerProfile::Eco => None,
         };
-        if let Some(icon_w) = crate::ui::icon::icon(icon_name, 64) {
-            icon_w.set_halign(gtk::Align::Center);
-            icon_w.set_margin_top(16);
-            icon_w.set_margin_bottom(16);
-            card.append(&icon_w);
+        if let Some(res) = resource {
+            if let Some(path) = crate::ui::window::find_resource(res) {
+                let pic = gtk::Picture::for_filename(&path);
+                pic.set_can_shrink(true);
+                pic.set_content_fit(gtk::ContentFit::Contain);
+                pic.set_size_request(-1, 160);
+                pic.set_margin_top(4);
+                pic.set_margin_bottom(4);
+                card.append(&pic);
+            }
+        } else {
+            // Eco mode fallback vector
+            if let Some(icon_w) = crate::ui::icon::icon("mode_eco.svg", 64) {
+                icon_w.set_halign(gtk::Align::Center);
+                icon_w.set_margin_top(32);
+                icon_w.set_margin_bottom(32);
+                card.append(&icon_w);
+            }
         }
 
         // What this tier actually gets from the firmware. Without it the cards

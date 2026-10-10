@@ -25,8 +25,16 @@ pub fn build() -> gtk::ScrolledWindow {
     hero.set_spacing(24);
     hero.set_halign(gtk::Align::Fill);
 
-    // No laptop photo here - we already know what the hardware looks like.
-    // The hero is identity text; live contextual instruments live below it.
+    // Laptop model photo
+    if let Some(photo_path) = find_model_photo(&info.product_name) {
+        let pic = gtk::Picture::for_filename(&photo_path);
+        pic.set_size_request(280, 160);
+        pic.set_can_shrink(true);
+        pic.set_content_fit(gtk::ContentFit::Contain);
+        pic.set_valign(gtk::Align::Center);
+        hero.append(&pic);
+    }
+
     let hero_info = gtk::Box::new(gtk::Orientation::Vertical, 6);
     hero_info.set_valign(gtk::Align::Center);
     hero_info.set_hexpand(true);
@@ -317,6 +325,8 @@ fn refresh_gpu_detail(label: &gtk::Label) {
     let metrics = crate::hardware::gpu::read_gpu_metrics();
     let status = if metrics.live {
         None
+    } else if metrics.is_hardware_locked {
+        Some("GPU Reset Required (Reboot recommended)")
     } else {
         Some(match crate::hardware::gpu::live_data_state() {
             crate::hardware::gpu::GpuLiveState::Loading => crate::i18n::t("gpu_loading_live"),
@@ -476,6 +486,20 @@ fn create_spec_card(
 
     card.append(&text);
     (faceted.widget, v)
+}
+
+fn find_model_photo(product_name: &str) -> Option<String> {
+    let clean_prod = product_name.replace("Predator", "").replace("Nitro", "").trim().to_lowercase();
+    for candidate in [
+        format!("models/{}.png", product_name.trim()),
+        format!("models/{}.png", clean_prod),
+        "models/PH317-55.png".to_string(),
+    ] {
+        if let Some(path) = crate::ui::window::find_resource(&candidate) {
+            return Some(path);
+        }
+    }
+    None
 }
 
 #[cfg(test)]
