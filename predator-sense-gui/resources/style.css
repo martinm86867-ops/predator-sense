@@ -61,39 +61,39 @@ viewport {
     background: rgba(255, 255, 255, 0.08);
 }
 
+/* === Global Typography — Clean System Modern === */
+* {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto", "Ubuntu", "Cantarell", sans-serif;
+}
+
 .header-brand {
-    font-family: "Predator", sans-serif;
-    font-size: 18px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    color: @text_main;
+}
+
+.header-title-label {
+    font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.5px;
     color: @text_main;
 }
 
-.header-title-label {
-    font-family: "Predator", sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    color: @text_main;
-}
-
 .header-title-sense {
-    font-family: "Predator", sans-serif;
-    font-size: 16px;
-    font-weight: 400;
+    font-size: 15px;
+    font-weight: 500;
     color: @text_muted;
 }
 
 /* === Nav Labels (drawn over Cairo background) === */
 .nav-label {
-    font-family: "Predator", sans-serif;
     color: @text_label;
     font-size: 13px;
-    font-weight: 400;
+    font-weight: 500;
 }
 
 .nav-label-active {
-    font-family: "Predator", sans-serif;
     color: white;
     font-size: 13px;
     font-weight: 700;
@@ -105,7 +105,6 @@ viewport {
 
 /* === Section Titles === */
 .section-title {
-    font-family: "Predator", sans-serif;
     font-size: 18px;
     font-weight: 700;
     color: @text_main;
@@ -120,7 +119,6 @@ viewport {
 
 /* === Gauge Label === */
 .gauge-label {
-    font-family: "Predator", sans-serif;
     font-size: 15px;
     font-weight: 400;
     color: @text_main;
@@ -129,7 +127,6 @@ viewport {
 
 /* === Faceted Card title (see ui/faceted_card.rs) === */
 .faceted-card-title {
-    font-family: "Predator", sans-serif;
     font-size: 20px;
     font-weight: 700;
     color: @text_main;
@@ -151,7 +148,6 @@ viewport {
 }
 
 .fan-card-value {
-    font-family: "Predator", sans-serif;
     font-size: 34px;
     font-weight: 700;
     color: @cyan;
@@ -237,14 +233,12 @@ viewport {
 }
 
 .cover-logo-title {
-    font-family: "Predator", sans-serif;
     font-size: 20px;
     font-weight: 700;
     color: @text_main;
 }
 
 .cover-logo-subtitle {
-    font-family: "Predator", sans-serif;
     font-size: 12px;
     font-weight: 400;
     color: @text_muted;
@@ -319,7 +313,6 @@ viewport {
 }
 
 .rgb-zone-label {
-    font-family: "Predator", sans-serif;
     font-size: 15px;
     color: @text_muted;
     font-weight: 700;
@@ -496,7 +489,6 @@ viewport {
 }
 
 .profile-name {
-    font-family: "Predator", sans-serif;
     font-size: 15px;
     font-weight: 700;
     color: @text_main;
@@ -568,7 +560,6 @@ scrollbar slider:hover {
 
 /* === Setup Page === */
 .setup-title {
-    font-family: "Predator", sans-serif;
     font-size: 22px;
     font-weight: 700;
     color: @cyan;
@@ -640,7 +631,6 @@ scrollbar slider:hover {
 
 /* === Settings Page === */
 .settings-section-title {
-    font-family: "Predator", sans-serif;
     font-size: 14px;
     font-weight: 700;
     color: @cyan;
@@ -698,14 +688,12 @@ scrollbar slider:hover {
 }
 
 .monitor-title {
-    font-family: "Predator", sans-serif;
     font-size: 17px;
     font-weight: 700;
     color: @text_main;
 }
 
 .monitor-subtitle {
-    font-family: "Predator", sans-serif;
     font-size: 12px;
     font-weight: 400;
     color: @text_muted;
@@ -726,7 +714,6 @@ scrollbar slider:hover {
 }
 
 .monitor-temp-big {
-    font-family: "Predator", sans-serif;
     font-size: 34px;
     font-weight: 700;
     color: @cyan;
@@ -740,7 +727,7 @@ scrollbar slider:hover {
 
 .stat-widget { padding: 4px 0; }
 .stat-title { font-size: 12px; font-weight: 400; color: @text_muted; }
-.stat-value { font-family: "Predator", sans-serif; font-size: 20px; font-weight: 700; color: @text_main; }
+.stat-value { font-size: 20px; font-weight: 700; color: @text_main; }
 .stat-unit { font-size: 12px; font-weight: 400; color: @text_muted; margin-bottom: 4px; }
 
 .dashboard-vendor {
@@ -751,14 +738,12 @@ scrollbar slider:hover {
 }
 
 .dashboard-product {
-    font-family: "Predator", sans-serif;
     font-size: 26px;
     font-weight: 700;
     color: @text_main;
 }
 
 .dashboard-summary {
-    font-family: "Predator", sans-serif;
     font-size: 12px;
     font-weight: 400;
     color: @text_muted;
@@ -806,7 +791,6 @@ scrollbar slider:hover {
 }
 
 .net-speed-value {
-    font-family: "Predator", sans-serif;
     font-size: 30px;
     font-weight: 700;
     color: @text_main;
@@ -837,7 +821,6 @@ scrollbar slider:hover {
 }
 
 .usage-hero-title {
-    font-family: "Predator", sans-serif;
     font-size: 12px;
     letter-spacing: 1px;
     color: @cyan;
@@ -859,7 +842,6 @@ scrollbar slider:hover {
 }
 
 .usage-stat-value {
-    font-family: "Predator", sans-serif;
     font-size: 16px;
     font-weight: 700;
     color: @text_main;
@@ -927,7 +909,6 @@ scrollbar slider:hover {
 }
 
 .disk-title {
-    font-family: "Predator", sans-serif;
     font-size: 14px;
     font-weight: 700;
     color: @text_main;

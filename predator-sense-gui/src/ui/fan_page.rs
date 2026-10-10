@@ -18,21 +18,6 @@ const PROFILES_ORDER: [PowerProfile; 5] = [
     PowerProfile::Eco,
 ];
 
-/// `resources/mode/*.png` path for this mode's card, relative to the
-/// resources root `find_resource` already searches. User-made artwork
-/// (not Acer's), cropped/downscaled from the originals - see the resumo for
-/// where those came from. No entry for `Eco`: only four robots exist, one
-/// per AC-side mode.
-fn profile_robot_resource(profile: PowerProfile) -> Option<&'static str> {
-    match profile {
-        PowerProfile::Quiet => Some("mode/quiet.png"),
-        PowerProfile::Balanced => Some("mode/balanced.png"),
-        PowerProfile::Performance => Some("mode/performance.png"),
-        PowerProfile::Turbo => Some("mode/turbo.png"),
-        PowerProfile::Eco => None,
-    }
-}
-
 /// Sustained/burst limits as "95 W / 160 W", or `None` when they were never
 /// readable on this machine.
 fn watts_text(measured: &Measured) -> Option<String> {
@@ -579,21 +564,19 @@ pub fn build_modes() -> gtk::Box {
         desc_label.set_max_width_chars(1);
         card.append(&desc_label);
 
-        // The user's own artwork, one robot per mode, no equivalent for Eco
-        // (only four exist) - matches `accent_for_profile` falling back to
-        // Quiet's color for the same reason. Fixed height, natural width:
-        // all four keep the same portrait aspect ratio, so this alone is
-        // enough to make every robot the same size on screen.
-        if let Some(resource) = profile_robot_resource(*profile_val) {
-            if let Some(path) = crate::ui::window::find_resource(resource) {
-                let robot = gtk::Picture::for_filename(&path);
-                robot.set_can_shrink(true);
-                robot.set_content_fit(gtk::ContentFit::Contain);
-                robot.set_size_request(-1, 160);
-                robot.set_margin_top(4);
-                robot.set_margin_bottom(4);
-                card.append(&robot);
-            }
+        // Clean modern vector icon for each performance mode
+        let icon_name = match profile_val {
+            PowerProfile::Quiet => "mode_quiet.svg",
+            PowerProfile::Balanced => "mode_balanced.svg",
+            PowerProfile::Performance => "mode_performance.svg",
+            PowerProfile::Turbo => "mode_turbo.svg",
+            PowerProfile::Eco => "mode_eco.svg",
+        };
+        if let Some(icon_w) = crate::ui::icon::icon(icon_name, 64) {
+            icon_w.set_halign(gtk::Align::Center);
+            icon_w.set_margin_top(16);
+            icon_w.set_margin_bottom(16);
+            card.append(&icon_w);
         }
 
         // What this tier actually gets from the firmware. Without it the cards

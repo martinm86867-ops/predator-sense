@@ -20,6 +20,11 @@ pub fn icon(name: &str, size: i32) -> Option<gtk::DrawingArea> {
         "bios.svg" => draw_bios,
         "internet.svg" => draw_wifi,
         "linux.svg" => draw_linux,
+        "mode_quiet.svg" => draw_mode_quiet,
+        "mode_balanced.svg" => draw_mode_balanced,
+        "mode_performance.svg" => draw_mode_performance,
+        "mode_turbo.svg" => draw_mode_turbo,
+        "mode_eco.svg" => draw_mode_eco,
         _ => return None,
     };
     Some(accent_drawing_area(size, draw))
@@ -240,5 +245,79 @@ fn draw_logo(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
         }
         cr.close_path();
     }
+    let _ = cr.fill();
+}
+
+fn draw_mode_quiet(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    cr.set_line_width(2.0 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    // Leaf / feather minimal profile curve
+    let cx = ox + 12.0 * s;
+    let cy = oy + 12.0 * s;
+    cr.arc(cx, cy, 7.0 * s, 0.0, std::f64::consts::PI * 1.5);
+    let _ = cr.stroke();
+    cr.arc(cx, cy, 3.5 * s, std::f64::consts::PI * 0.5, 2.0 * std::f64::consts::PI);
+    let _ = cr.stroke();
+}
+
+fn draw_mode_balanced(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    cr.set_line_width(2.0 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    // Twin balanced tachometer arcs
+    let cx = ox + 12.0 * s;
+    let cy = oy + 12.0 * s;
+    cr.arc(cx, cy, 7.5 * s, std::f64::consts::PI * 0.75, std::f64::consts::PI * 2.25);
+    let _ = cr.stroke();
+    cr.move_to(cx, cy);
+    cr.line_to(cx + 4.5 * s, cy - 4.5 * s);
+    let _ = cr.stroke();
+}
+
+fn draw_mode_performance(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    // Double chevron up / speed indicator
+    cr.set_line_width(2.5 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    cr.set_line_join(gtk4::cairo::LineJoin::Round);
+    cr.move_to(ox + 4.0 * s, oy + 13.0 * s);
+    cr.line_to(ox + 12.0 * s, oy + 6.0 * s);
+    cr.line_to(ox + 20.0 * s, oy + 13.0 * s);
+    let _ = cr.stroke();
+    cr.move_to(ox + 4.0 * s, oy + 19.0 * s);
+    cr.line_to(ox + 12.0 * s, oy + 12.0 * s);
+    cr.line_to(ox + 20.0 * s, oy + 19.0 * s);
+    let _ = cr.stroke();
+}
+
+fn draw_mode_turbo(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    // Lightning bolt / turbo charge
+    cr.move_to(ox + 13.5 * s, oy + 2.0 * s);
+    cr.line_to(ox + 6.0 * s, oy + 12.5 * s);
+    cr.line_to(ox + 12.0 * s, oy + 12.5 * s);
+    cr.line_to(ox + 10.5 * s, oy + 22.0 * s);
+    cr.line_to(ox + 18.0 * s, oy + 10.5 * s);
+    cr.line_to(ox + 12.5 * s, oy + 10.5 * s);
+    cr.close_path();
+    let _ = cr.fill();
+}
+
+fn draw_mode_eco(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    cr.set_line_width(2.0 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    // Minimal battery eco cell
+    round(cr, s, ox, oy, 6.0, 5.0, 12.0, 15.0, 2.0);
+    let _ = cr.stroke();
+    rect(cr, s, ox, oy, 9.5, 2.5, 5.0, 2.0);
+    let _ = cr.fill();
+    rect(cr, s, ox, oy, 8.5, 12.0, 7.0, 6.0);
     let _ = cr.fill();
 }
