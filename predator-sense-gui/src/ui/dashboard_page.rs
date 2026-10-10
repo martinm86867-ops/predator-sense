@@ -219,21 +219,25 @@ pub fn build() -> gtk::ScrolledWindow {
 enum InstrumentKind {
     CpuTemp,
     GpuTemp,
+    SystemTemp,
     CpuFan,
     GpuFan,
+    NvmeTemp,
 }
 
 /// A compact, color-coded live reading (label + big value + unit) refreshing
 /// on a timer - the "instrument cluster" the dashboard leads with, in place
 /// of the old static laptop photo.
 fn build_instrument_cluster() -> gtk::Box {
-    let row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    let row = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     row.set_homogeneous(true);
     row.set_hexpand(true);
 
-    let specs: [(&str, &str, InstrumentKind); 4] = [
+    let specs: [(&str, &str, InstrumentKind); 6] = [
         ("CPU", "°C", InstrumentKind::CpuTemp),
         ("GPU", "°C", InstrumentKind::GpuTemp),
+        ("SYSTEM", "°C", InstrumentKind::SystemTemp),
+        ("NVME", "°C", InstrumentKind::NvmeTemp),
         ("CPU FAN", "RPM", InstrumentKind::CpuFan),
         ("GPU FAN", "RPM", InstrumentKind::GpuFan),
     ];
@@ -283,6 +287,8 @@ fn refresh_instruments(values: &[(gtk::Label, InstrumentKind)]) {
         let (text, color) = match kind {
             InstrumentKind::CpuTemp => temp_reading(sensors.cpu_temp),
             InstrumentKind::GpuTemp => temp_reading(sensors.gpu_temp),
+            InstrumentKind::SystemTemp => temp_reading(sensors.system_temp),
+            InstrumentKind::NvmeTemp => temp_reading(sensors.nvme0_temp),
             InstrumentKind::CpuFan => fan_reading(sensors.cpu_fan_rpm),
             InstrumentKind::GpuFan => fan_reading(sensors.gpu_fan_rpm),
         };

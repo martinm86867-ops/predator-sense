@@ -1,4 +1,4 @@
-pub mod ai_page;
+// ai_page removed (bloat elimination)
 pub mod audio_eq_page;
 pub mod background;
 pub mod badge_widget;

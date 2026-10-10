@@ -10,7 +10,7 @@ use crate::config;
 use crate::hardware::{rgb, sensors, setup};
 use crate::tray::TrayManager;
 use crate::ui::{
-    ai_page, background, battery_page, cooling_page, dashboard_page, drivers_page, hardware_page,
+    background, battery_page, cooling_page, dashboard_page, drivers_page, hardware_page,
     monitor_page, network_page, rgb_page, setup_page, temperatures_page, tools_page, usage_page,
 };
 
@@ -402,33 +402,6 @@ fn build_main_ui(app: &adw::Application, window: &gtk::ApplicationWindow) {
                 glib::ControlFlow::Continue
             });
         }
-    }
-
-    // AI assistant background monitor (opt-in, off unless ai_assistant_enabled).
-    // Snapshots hardware state every minute; once `ai_check_interval_min`
-    // minutes' worth of snapshots have accumulated, asks Ollama for a
-    // verdict (same confirm-or-auto-apply gate as the manual/chat triggers
-    // on the AI page). Re-reads the interval from config on every tick, so
-    // changing it in Settings takes effect on the next tick - no restart.
-    {
-        let window_c = window.clone();
-        let minutes_since_check: Rc<std::cell::Cell<u32>> = Rc::new(std::cell::Cell::new(0));
-        glib::timeout_add_seconds_local(60, move || {
-            let cfg = config::load_app_config();
-            if !cfg.ai_assistant_enabled {
-                minutes_since_check.set(0);
-                return glib::ControlFlow::Continue;
-            }
-            crate::hardware::ai_snapshot::append_snapshot();
-            let elapsed = minutes_since_check.get() + 1;
-            if elapsed >= cfg.ai_check_interval_min.max(1) {
-                minutes_since_check.set(0);
-                ai_page::run_periodic_check(&window_c);
-            } else {
-                minutes_since_check.set(elapsed);
-            }
-            glib::ControlFlow::Continue
-        });
     }
 
     // Physical Predator/Turbo keyboard key reaction (see profile.rs's
@@ -1524,70 +1497,6 @@ fn build_settings_page(_app: &adw::Application) -> gtk::ScrolledWindow {
     font_row.append(&font_scale);
     page.append(&font_row);
 
-    // === AI Assistant Section (opt-in) ===
-    // Enable/permission toggles live here (Settings), matching every other
-    // opt-in feature's pattern; the actual chat/model-manager UI lives on
-    // its own page (see ui/ai_page.rs) since it needs a lot more room.
-    let ai_title = gtk::Label::new(Some(t("ai_assistant_title")));
-    ai_title.add_css_class("settings-section-title");
-    ai_title.set_halign(gtk::Align::Start);
-    ai_title.set_margin_top(20);
-    page.append(&ai_title);
-
-    let ai_desc = gtk::Label::new(Some(t("ai_assistant_desc")));
-    ai_desc.add_css_class("info-note");
-    ai_desc.set_halign(gtk::Align::Start);
-    ai_desc.set_wrap(true);
-    page.append(&ai_desc);
-
-    let ai_enable_row = create_setting_row(t("ai_assistant_enable"), t("ai_assistant_enable_desc"));
-    let ai_enable_switch = gtk::Switch::new();
-    ai_enable_switch.set_active(cfg.ai_assistant_enabled);
-    ai_enable_switch.set_valign(gtk::Align::Center);
-    ai_enable_row.append(&ai_enable_switch);
-    page.append(&ai_enable_row);
-
-    let ai_auto_row = create_setting_row(t("ai_auto_apply"), t("ai_auto_apply_desc"));
-    let ai_auto_switch = gtk::Switch::new();
-    ai_auto_switch.set_active(cfg.ai_auto_apply);
-    ai_auto_switch.set_valign(gtk::Align::Center);
-    ai_auto_switch.set_sensitive(cfg.ai_assistant_enabled);
-    ai_auto_row.append(&ai_auto_switch);
-    page.append(&ai_auto_row);
-    ai_auto_switch.connect_state_set(move |_, active| {
-        let mut c = config::load_app_config();
-        c.ai_auto_apply = active;
-        let _ = config::save_app_config(&c);
-        glib::Propagation::Proceed
-    });
-
-    let ai_interval_row = create_setting_row(t("ai_check_interval"), t("ai_check_interval_desc"));
-    let ai_interval_spin = gtk::SpinButton::with_range(1.0, 180.0, 1.0);
-    ai_interval_spin.set_value(cfg.ai_check_interval_min as f64);
-    ai_interval_spin.set_valign(gtk::Align::Center);
-    ai_interval_spin.set_sensitive(cfg.ai_assistant_enabled);
-    ai_interval_row.append(&ai_interval_spin);
-    page.append(&ai_interval_row);
-    ai_interval_spin.connect_value_changed(move |sp| {
-        let mut c = config::load_app_config();
-        c.ai_check_interval_min = sp.value() as u32;
-        let _ = config::save_app_config(&c);
-    });
-
-    {
-        let ai_auto_switch = ai_auto_switch.clone();
-        let ai_interval_spin = ai_interval_spin.clone();
-        ai_enable_switch.connect_state_set(move |_, active| {
-            let mut c = config::load_app_config();
-            c.ai_assistant_enabled = active;
-            let _ = config::save_app_config(&c);
-            ai_auto_switch.set_sensitive(active);
-            ai_interval_spin.set_sensitive(active);
-            glib::Propagation::Proceed
-        });
-    }
-
-    // Module status
     // === Hardware Settings Section ===
     let hw_title = gtk::Label::new(Some(t("hw_settings")));
     hw_title.add_css_class("settings-section-title");

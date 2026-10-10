@@ -1,6 +1,4 @@
-pub mod ai_actionlog;
-pub mod ai_assistant;
-pub mod ai_snapshot;
+// ai modules removed (bloat elimination)
 pub mod alerts;
 pub mod applog;
 pub mod audio_eq;
