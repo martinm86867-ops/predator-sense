@@ -662,15 +662,11 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
     let nav_items = vec![
         (crate::i18n::t("home_page"), "home"),
         (crate::i18n::t("cooling_nav"), "cooling"),
-        (crate::i18n::t("temperatures"), "temperatures"),
         (crate::i18n::t("usage"), "usage"),
         (crate::i18n::t("network"), "network"),
         (crate::i18n::t("lighting"), "lighting"),
         (crate::i18n::t("battery"), "battery"),
-        (crate::i18n::t("monitoring"), "monitor"),
         (crate::i18n::t("tools_nav"), "tools"),
-        (crate::i18n::t("drivers_and_manuals"), "drivers"),
-        (crate::i18n::t("hardware_nav"), "hardware"),
         (crate::i18n::t("settings"), "settings"),
     ];
 
@@ -1727,12 +1723,26 @@ fn build_settings_page(_app: &adw::Application) -> gtk::ScrolledWindow {
         let copy_btn = gtk::Button::from_icon_name("edit-copy-symbolic");
         copy_btn.set_tooltip_text(Some(t("copy")));
         copy_btn.add_css_class("flat");
+        let serial_c = serial.clone();
         copy_btn.connect_clicked(move |_btn| {
             if let Some(display) = gtk::gdk::Display::default() {
-                display.clipboard().set_text(&serial);
+                display.clipboard().set_text(&serial_c);
             }
         });
         serial_row.append(&copy_btn);
+
+        let driver_btn = gtk::Button::with_label("Acer Support");
+        driver_btn.add_css_class("secondary-button");
+        driver_btn.connect_clicked(|_| {
+            if let Some(display) = gtk::gdk::Display::default() {
+                gtk::gio::AppInfo::launch_default_for_uri(
+                    "https://www.acer.com/us-en/support/drivers-and-manuals",
+                    Some(&display.app_launch_context()),
+                )
+                .ok();
+            }
+        });
+        serial_row.append(&driver_btn);
         page.append(&serial_row);
     }
 

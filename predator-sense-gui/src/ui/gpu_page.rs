@@ -70,10 +70,22 @@ pub fn build() -> gtk::Box {
     header.append(&gpu_driver);
     page.append(&header);
 
+    let status_bar = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     let live_status = gtk::Label::new(Some(crate::i18n::t("gpu_loading_live")));
     live_status.add_css_class("info-note");
     live_status.set_halign(gtk::Align::Start);
-    page.append(&live_status);
+    live_status.set_hexpand(true);
+    status_bar.append(&live_status);
+
+    let reset_btn = gtk::Button::with_label("Reset GPU Bus (PCIe Rescan)");
+    reset_btn.add_css_class("danger-button");
+    reset_btn.connect_clicked(|_| {
+        let _ = std::process::Command::new("pkexec")
+            .args(["/bin/bash", "-c", "echo 1 > /sys/bus/pci/devices/0000:01:00.0/remove; sleep 2; echo 1 > /sys/bus/pci/rescan; sleep 2; modprobe nvidia nvidia_uvm nvidia_modeset nvidia_drm"])
+            .status();
+    });
+    status_bar.append(&reset_btn);
+    page.append(&status_bar);
 
     // === Top row: 4 gauges (Temp, Utilização, VRAM, Consumo) ===
     let gauges_row = gtk::Box::new(gtk::Orientation::Horizontal, 16);
