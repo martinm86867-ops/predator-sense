@@ -233,7 +233,7 @@ fn parse_gpu_metrics(contents: &str) -> Option<GpuMetrics> {
         || p[6].contains("requires reset")
         || p.iter().any(|field| field.contains("[GPU requires reset]"));
 
-    Some(GpuMetrics {
+    let metrics = GpuMetrics {
         live: !is_hardware_locked,
         is_hardware_locked,
         name: p[0].into(),
@@ -253,14 +253,17 @@ fn parse_gpu_metrics(contents: &str) -> Option<GpuMetrics> {
         pcie_gen: p[18].into(),
         pcie_width: p[19].into(),
         power_min_w: parse_f64(p[20]),
-        // `power.min_limit`/`power.max_limit` return plausible-looking static
-        // numbers (confirmed on real hardware: 1-110W) even when writes are
-        // always rejected - the actual tell is the inforom Power Management
-        // Object itself being absent (`nvidia-smi -q`'s "Power Management
-        // Object: N/A", queryable as `inforom.pwr`). `[N/A]` here means the
-        // vBIOS never exposed the NVML power-limit control at all.
         power_management_object_present: !p[21].contains("N/A"),
-    })
+    };
+
+    // Update CACHE with custom TTL if locked
+    if is_hardware_locked {
+        if let Ok(mut lock) = CACHE.lock() {
+            *lock = Some((Instant::now() + Duration::from_secs(28), metrics.clone()));
+        }
+    }
+
+    Some(metrics)
 }
 
 fn parse_optional_u32(value: &str) -> Option<u32> {
