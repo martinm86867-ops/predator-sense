@@ -292,8 +292,43 @@ fn read_processes(
     out
 }
 
-fn uid_to_name(_uid: u32) -> String {
-    "user".to_string()
+pub fn terminate_process(pid: u32, force: bool) -> Result<(), String> {
+    let sig = if force { "-9" } else { "-15" };
+    match std::process::Command::new("kill")
+        .args([sig, &pid.to_string()])
+        .status()
+    {
+        Ok(s) if s.success() => Ok(()),
+        Ok(_) => {
+            // Fallback via pkexec if permission denied
+            std::process::Command::new("pkexec")
+                .args(["kill", sig, &pid.to_string()])
+                .status()
+                .map_err(|e| e.to_string())
+                .and_then(|s| {
+                    if s.success() {
+                        Ok(())
+                    } else {
+                        Err("Failed to terminate process".into())
+                    }
+                })
+        }
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+pub fn trace_lineage_witr(pid: u32) -> Option<String> {
+    let out = std::process::Command::new("witr")
+        .args(["--pid", &pid.to_string(), "--short", "--no-color"])
+        .output()
+        .ok()?;
+    if out.status.success() {
+        let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !text.is_empty() {
+            return Some(text);
+        }
+    }
+    None
 }
 
 pub fn top_by_cpu(processes: &[ProcessInfo], n: usize) -> Vec<ProcessInfo> {

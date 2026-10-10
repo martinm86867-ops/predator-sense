@@ -428,6 +428,22 @@ viewport {
     opacity: 0.4;
 }
 
+.danger-button {
+    background-color: rgba(240, 82, 79, 0.15);
+    color: @danger;
+    border: 1px solid rgba(240, 82, 79, 0.35);
+    border-radius: 10px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.danger-button:hover {
+    background-color: rgba(240, 82, 79, 0.28);
+    color: #ffffff;
+    border-color: @danger;
+}
+
 /* === Status Label === */
 .status-label {
     font-size: 14px;

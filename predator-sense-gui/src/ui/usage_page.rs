@@ -1080,11 +1080,7 @@ fn build_process_row(
         det.set_margin_top(2);
         det.set_margin_bottom(8);
 
-        if !p.cmdline.is_empty() {
-            det.append(&detail_kv(crate::i18n::t("proc_command"), &p.cmdline));
-        }
         det.append(&detail_kv("PID", &p.pid.to_string()));
-        det.append(&detail_kv(crate::i18n::t("proc_user"), &p.user));
         det.append(&detail_kv(
             crate::i18n::t("proc_state"),
             &format!("{} ({})", p.state, state_name(&p.state)),
@@ -1094,6 +1090,33 @@ fn build_process_row(
             crate::i18n::t("proc_memory_rss"),
             &format_kb(p.mem_kb),
         ));
+
+        // Lineage insight via witr
+        if let Some(lineage) = crate::hardware::procs::trace_lineage_witr(p.pid) {
+            det.append(&detail_kv("Ancestry (witr)", &lineage));
+        }
+
+        // Action buttons: Terminate (SIGTERM) & Force Kill (SIGKILL)
+        let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        actions.set_margin_top(6);
+
+        let term_btn = gtk::Button::with_label("End Task");
+        term_btn.add_css_class("secondary-button");
+        let kill_pid = p.pid;
+        term_btn.connect_clicked(move |_| {
+            let _ = crate::hardware::procs::terminate_process(kill_pid, false);
+        });
+
+        let kill_btn = gtk::Button::with_label("Force Kill");
+        kill_btn.add_css_class("danger-button");
+        kill_btn.connect_clicked(move |_| {
+            let _ = crate::hardware::procs::terminate_process(kill_pid, true);
+        });
+
+        actions.append(&term_btn);
+        actions.append(&kill_btn);
+        det.append(&actions);
+
         row_outer.append(&det);
     }
 
