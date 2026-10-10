@@ -252,21 +252,21 @@ fn build_instrument_cluster() -> gtk::Box {
 
     let mut values: Vec<(gtk::Label, InstrumentKind)> = Vec::new();
     for (label, unit, kind) in specs {
-        let card = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        let card = gtk::Box::new(gtk::Orientation::Vertical, 2);
         card.add_css_class("spec-card");
         card.set_hexpand(true);
         card.set_valign(gtk::Align::Center);
 
         let l = gtk::Label::new(Some(label));
-        l.add_css_class("spec-title");
+        l.add_css_class("instrument-header");
         l.set_halign(gtk::Align::Start);
 
         let v = gtk::Label::new(Some("--"));
-        v.add_css_class("monitor-temp-big");
+        v.add_css_class("instrument-val");
         v.set_halign(gtk::Align::Start);
 
         let u = gtk::Label::new(Some(unit));
-        u.add_css_class("spec-title");
+        u.add_css_class("instrument-unit");
         u.set_halign(gtk::Align::Start);
 
         card.append(&l);
@@ -315,9 +315,14 @@ fn temp_reading(t: Option<f64>) -> (String, String) {
 }
 
 fn fan_reading(rpm: Option<u32>) -> (String, String) {
+    let color = if crate::ui::brand_theme::is_light_mode() {
+        "#1e293b".to_string()
+    } else {
+        "#f1f5f9".to_string()
+    };
     (
         rpm.map(|r| r.to_string()).unwrap_or_else(|| "--".into()),
-        "#aeb7c2".to_string(),
+        color,
     )
 }
 

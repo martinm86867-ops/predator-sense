@@ -751,11 +751,31 @@ scrollbar slider:hover {
 }
 
 .spec-card {
-    padding: 14px 16px;
+    padding: 12px 14px;
     background-color: @bg_card;
     border: 1px solid @border_dim;
-    border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.instrument-header {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: @text_muted;
+}
+
+.instrument-val {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin: 2px 0;
+}
+
+.instrument-unit {
+    font-size: 11px;
+    font-weight: 600;
+    color: @text_muted;
 }
 
 .spec-icon {

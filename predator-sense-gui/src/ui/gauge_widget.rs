@@ -8,9 +8,13 @@ pub fn temp_color(celsius: f64) -> (f64, f64, f64) {
     if celsius >= 85.0 {
         (0.93, 0.26, 0.22) // red
     } else if celsius >= 70.0 {
-        (0.95, 0.62, 0.16) // amber
+        (0.85, 0.50, 0.05) // rich amber
     } else {
-        (0.24, 0.78, 0.45) // green
+        if crate::ui::brand_theme::is_light_mode() {
+            (0.08, 0.58, 0.35) // deeper contrast green for light mode
+        } else {
+            (0.24, 0.78, 0.45) // bright green
+        }
     }
 }
 

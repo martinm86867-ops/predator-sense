@@ -69,15 +69,15 @@ pub fn theme_css(css: &str) -> Cow<'_, str> {
 
 fn apply_light_palette(css: &str) -> String {
     css.replace("@define-color bg_body #0b0e13;", "@define-color bg_body #f0f2f5;")
-        .replace("@define-color bg_dark #10141b;", "@define-color bg_dark #e4e7eb;")
+        .replace("@define-color bg_dark #10141b;", "@define-color bg_dark #e2e8f0;")
         .replace("@define-color bg_panel #141922;", "@define-color bg_panel #ffffff;")
         .replace("@define-color bg_card #181e27;", "@define-color bg_card #ffffff;")
-        .replace("@define-color bg_raised #1d2430;", "@define-color bg_raised #eef1f4;")
-        .replace("@define-color border_dim rgba(255, 255, 255, 0.07);", "@define-color border_dim rgba(0, 0, 0, 0.08);")
-        .replace("@define-color border_mid rgba(255, 255, 255, 0.12);", "@define-color border_mid rgba(0, 0, 0, 0.15);")
-        .replace("@define-color text_main #f2f5f8;", "@define-color text_main #1a202c;")
-        .replace("@define-color text_muted #8b95a3;", "@define-color text_muted #64748b;")
-        .replace("@define-color text_label #aeb7c2;", "@define-color text_label #475569;")
+        .replace("@define-color bg_raised #1d2430;", "@define-color bg_raised #f1f5f9;")
+        .replace("@define-color border_dim rgba(255, 255, 255, 0.07);", "@define-color border_dim rgba(0, 0, 0, 0.07);")
+        .replace("@define-color border_mid rgba(255, 255, 255, 0.12);", "@define-color border_mid rgba(0, 0, 0, 0.12);")
+        .replace("@define-color text_main #f2f5f8;", "@define-color text_main #0f172a;")
+        .replace("@define-color text_muted #8b95a3;", "@define-color text_muted #475569;")
+        .replace("@define-color text_label #aeb7c2;", "@define-color text_label #334155;")
 }
 
 fn recolor(css: &str, from: &ColorSet, to: &ColorSet) -> String {
