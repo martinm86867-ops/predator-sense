@@ -200,7 +200,7 @@ pub fn build() -> gtk::ScrolledWindow {
             scroll.connect_map(move |_| refresh_gpu_detail(&map_label));
 
             let scroll = scroll.clone();
-            glib::timeout_add_seconds_local(4, move || {
+            glib::timeout_add_seconds_local(2, move || {
                 if scroll.is_mapped() {
                     refresh_gpu_detail(&gpu_value_label);
                 }
@@ -271,7 +271,7 @@ fn build_instrument_cluster() -> gtk::Box {
     refresh_instruments(&values);
 
     let row_c = row.clone();
-    glib::timeout_add_seconds_local(4, move || {
+    glib::timeout_add_seconds_local(2, move || {
         if row_c.is_mapped() {
             refresh_instruments(&values);
         }
