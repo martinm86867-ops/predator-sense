@@ -88,11 +88,14 @@ pub fn build(app: &adw::Application) {
 
     let btn_minimize = gtk::Button::with_label("—");
     btn_minimize.add_css_class("window-ctrl-btn");
+    btn_minimize.set_tooltip_text(Some("Minimize"));
     let win_c = window.clone();
     btn_minimize.connect_clicked(move |_| win_c.minimize());
 
     let btn_close = gtk::Button::with_label("✕");
     btn_close.add_css_class("window-ctrl-btn");
+    btn_close.add_css_class("window-ctrl-btn-close");
+    btn_close.set_tooltip_text(Some("Close"));
     let win_c2 = window.clone();
     let app_c = app.clone();
     btn_close.connect_clicked(move |_| {
@@ -682,7 +685,8 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
     sidebar.set_size_request(sidebar_width, -1);
 
     let active_idx: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
-    let nav_widgets: Rc<RefCell<Vec<(gtk::DrawingArea, gtk::Label)>>> =
+    let hovered_idx: Rc<RefCell<Option<usize>>> = Rc::new(RefCell::new(None));
+    let nav_widgets: Rc<RefCell<Vec<(gtk::DrawingArea, gtk::DrawingArea, gtk::Label)>>> =
         Rc::new(RefCell::new(Vec::new()));
 
     // Shared by every item's click handler AND the Up/Down key navigation
@@ -704,8 +708,9 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
             *active_c.borrow_mut() = idx;
             ensure_page_built(&stack_c, &pending_c, page);
             stack_c.set_visible_child_name(page);
-            for (j, (bg_da, lbl_w)) in widgets_c.borrow().iter().enumerate() {
+            for (j, (bg_da, icon_da, lbl_w)) in widgets_c.borrow().iter().enumerate() {
                 bg_da.queue_draw();
+                icon_da.queue_draw();
                 lbl_w.remove_css_class("nav-label-active");
                 lbl_w.remove_css_class("nav-label");
                 lbl_w.add_css_class(if j == idx {
@@ -717,35 +722,83 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
         })
     };
 
-    for (i, (label, _)) in nav_items.iter().enumerate() {
+    for (i, (label, page_key)) in nav_items.iter().enumerate() {
         let item_overlay = gtk::Overlay::new();
 
         // Cairo-drawn rounded pill background
         let bg = gtk::DrawingArea::new();
         bg.set_size_request(sidebar_width, 40);
         let active_idx_c = active_idx.clone();
+        let hovered_idx_c = hovered_idx.clone();
         let idx = i;
         bg.set_draw_func(move |_a, cr, w, h| {
-            draw_menu_item(cr, w as f64, h as f64, *active_idx_c.borrow() == idx);
+            let is_active = *active_idx_c.borrow() == idx;
+            let is_hovered = *hovered_idx_c.borrow() == Some(idx);
+            draw_menu_item(cr, w as f64, h as f64, is_active, is_hovered);
         });
         item_overlay.set_child(Some(&bg));
 
-        // Label overlay
+        // Horizontal content: crisp vector icon + text label
+        let row = gtk::Box::new(gtk::Orientation::Horizontal, NAV_ROW_SPACING);
+        row.set_halign(gtk::Align::Start);
+        row.set_valign(gtk::Align::Center);
+        row.set_margin_start(NAV_ROW_START_MARGIN);
+        row.set_margin_end(NAV_ROW_END_PADDING);
+
+        let active_idx_icon = active_idx.clone();
+        let hovered_idx_icon = hovered_idx.clone();
+        let page_id = *page_key;
+        let icon_da = gtk::DrawingArea::new();
+        icon_da.set_size_request(NAV_ROW_ICON_WIDTH, NAV_ROW_ICON_WIDTH);
+        icon_da.set_valign(gtk::Align::Center);
+        icon_da.set_draw_func(move |_a, cr, w, h| {
+            let is_active = *active_idx_icon.borrow() == idx;
+            let is_hovered = *hovered_idx_icon.borrow() == Some(idx);
+            let color = if is_active {
+                (1.0, 1.0, 1.0)
+            } else if is_hovered {
+                crate::ui::brand_theme::accent().bright
+            } else if crate::ui::brand_theme::is_light_mode() {
+                (0.28, 0.33, 0.40)
+            } else {
+                (0.68, 0.72, 0.78)
+            };
+            crate::ui::icon::draw_nav_by_name(page_id, cr, w as f64, h as f64, color);
+        });
+        row.append(&icon_da);
+
         let lbl = gtk::Label::new(Some(label));
         lbl.set_halign(gtk::Align::Start);
-        lbl.set_margin_start(NAV_LABEL_START_MARGIN);
-        // Belt-and-suspenders: the sidebar is sized to fit every label's
-        // real measured width above, so this should never actually trigger
-        // - kept anyway so a future translation this was not measured
-        // against degrades to "…" instead of visibly overflowing past the
-        // item's own background.
+        lbl.set_valign(gtk::Align::Center);
         lbl.set_ellipsize(gtk4::pango::EllipsizeMode::End);
         if i == 0 {
             lbl.add_css_class("nav-label-active");
         } else {
             lbl.add_css_class("nav-label");
         }
-        item_overlay.add_overlay(&lbl);
+        row.append(&lbl);
+
+        item_overlay.add_overlay(&row);
+
+        // Hover motion controller
+        let motion = gtk::EventControllerMotion::new();
+        let hovered_idx_enter = hovered_idx.clone();
+        let bg_enter = bg.clone();
+        let icon_enter = icon_da.clone();
+        motion.connect_enter(move |_, _, _| {
+            *hovered_idx_enter.borrow_mut() = Some(idx);
+            bg_enter.queue_draw();
+            icon_enter.queue_draw();
+        });
+        let hovered_idx_leave = hovered_idx.clone();
+        let bg_leave = bg.clone();
+        let icon_leave = icon_da.clone();
+        motion.connect_leave(move |_| {
+            *hovered_idx_leave.borrow_mut() = None;
+            bg_leave.queue_draw();
+            icon_leave.queue_draw();
+        });
+        item_overlay.add_controller(motion);
 
         // Click
         let gesture = gtk::GestureClick::new();
@@ -755,7 +808,7 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
         });
         item_overlay.add_controller(gesture);
 
-        nav_widgets.borrow_mut().push((bg.clone(), lbl.clone()));
+        nav_widgets.borrow_mut().push((bg.clone(), icon_da.clone(), lbl.clone()));
         sidebar.append(&item_overlay);
     }
 
@@ -969,22 +1022,16 @@ fn rounded_rect(cr: &gtk4::cairo::Context, x: f64, y: f64, w: f64, h: f64, r: f6
     cr.close_path();
 }
 
-/// Left margin the nav label overlay already uses (`lbl.set_margin_start`),
-/// plus breathing room on the right so the widest label's text never
-/// touches the item's own right edge.
-const NAV_LABEL_START_MARGIN: i32 = 15;
-const NAV_LABEL_END_PADDING: i32 = 20;
-/// Never narrower than this, even for a hypothetical language whose longest
-/// label came out unexpectedly short - keeps the sidebar from looking
-/// cramped relative to the rest of the chrome.
-const NAV_SIDEBAR_MIN_WIDTH: i32 = 170;
+const NAV_ROW_ICON_WIDTH: i32 = 18;
+const NAV_ROW_SPACING: i32 = 10;
+const NAV_ROW_START_MARGIN: i32 = 14;
+const NAV_ROW_END_PADDING: i32 = 18;
+const NAV_SIDEBAR_MIN_WIDTH: i32 = 205;
 
 /// Real measured width of the widest label in `labels`, at the "Predator"
 /// font's bold weight (the active-row state - always at least as wide as
 /// the same text at the regular 400 weight `.nav-label` uses), plus this
-/// sidebar's own left/right padding. `widget` only lends its display to
-/// resolve the font; it does not need to be realized or on screen yet -
-/// `Widget::pango_context()` falls back to the default display otherwise.
+/// sidebar's own left/right padding and vector icon geometry.
 fn nav_sidebar_width<'a>(
     widget: &impl IsA<gtk::Widget>,
     labels: impl Iterator<Item = &'a str>,
@@ -1003,7 +1050,7 @@ fn nav_sidebar_width<'a>(
         })
         .max()
         .unwrap_or(0);
-    (widest + NAV_LABEL_START_MARGIN + NAV_LABEL_END_PADDING).max(NAV_SIDEBAR_MIN_WIDTH)
+    (widest + NAV_ROW_START_MARGIN + NAV_ROW_ICON_WIDTH + NAV_ROW_SPACING + NAV_ROW_END_PADDING).max(NAV_SIDEBAR_MIN_WIDTH)
 }
 
 /// Marks `widget` and every descendant (children, grandchildren, ...) as
@@ -1023,8 +1070,8 @@ fn queue_draw_recursive(widget: &gtk::Widget) {
 }
 
 /// Draw a sidebar menu item as a rounded pill: accent gradient when active,
-/// a faint translucent surface otherwise.
-fn draw_menu_item(cr: &gtk4::cairo::Context, w: f64, h: f64, is_active: bool) {
+/// a luminous accent tint when hovered, and a faint translucent surface otherwise.
+fn draw_menu_item(cr: &gtk4::cairo::Context, w: f64, h: f64, is_active: bool, is_hovered: bool) {
     let accent = crate::ui::brand_theme::accent();
 
     // Full-height rounded pill.
@@ -1038,9 +1085,24 @@ fn draw_menu_item(cr: &gtk4::cairo::Context, w: f64, h: f64, is_active: bool) {
         grad.add_color_stop_rgb(0.0, br, bg, bb);
         grad.add_color_stop_rgb(1.0, dr, dg, db);
         cr.set_source(&grad).unwrap();
-        let _ = cr.fill();
+        let _ = cr.fill_preserve();
+
+        // 1px inner specular light
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.25);
+        cr.set_line_width(1.0);
+        let _ = cr.stroke();
+    } else if is_hovered {
+        // Luminous translucent hover wash
+        let (br, bg, bb) = accent.bright;
+        cr.set_source_rgba(br, bg, bb, 0.12);
+        let _ = cr.fill_preserve();
+
+        // Delicate accent perimeter
+        cr.set_source_rgba(br, bg, bb, 0.35);
+        cr.set_line_width(1.0);
+        let _ = cr.stroke();
     } else {
-        // Faint translucent surface; hover is handled by the label's CSS.
+        // Faint resting translucent surface
         cr.set_source_rgba(1.0, 1.0, 1.0, 0.035);
         let _ = cr.fill();
     }

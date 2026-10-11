@@ -321,3 +321,162 @@ fn draw_mode_eco(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) 
     rect(cr, s, ox, oy, 8.5, 12.0, 7.0, 6.0);
     let _ = cr.fill();
 }
+
+pub fn draw_nav_by_name(name: &str, cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    match name {
+        "home" => draw_nav_home(cr, w, h, c),
+        "cooling" => draw_nav_cooling(cr, w, h, c),
+        "usage" => draw_nav_usage(cr, w, h, c),
+        "network" => draw_wifi(cr, w, h, c),
+        "lighting" => draw_nav_lighting(cr, w, h, c),
+        "battery" => draw_nav_battery(cr, w, h, c),
+        "tools" => draw_nav_tools(cr, w, h, c),
+        "settings" => draw_nav_settings(cr, w, h, c),
+        _ => draw_logo(cr, w, h, c),
+    }
+}
+
+fn draw_nav_home(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    cr.set_line_width(2.0 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    cr.set_line_join(gtk4::cairo::LineJoin::Round);
+
+    // Roof
+    cr.move_to(ox + 3.0 * s, oy + 11.5 * s);
+    cr.line_to(ox + 12.0 * s, oy + 3.5 * s);
+    cr.line_to(ox + 21.0 * s, oy + 11.5 * s);
+    let _ = cr.stroke();
+
+    // Body
+    cr.move_to(ox + 5.5 * s, oy + 10.5 * s);
+    cr.line_to(ox + 5.5 * s, oy + 20.0 * s);
+    cr.line_to(ox + 18.5 * s, oy + 20.0 * s);
+    cr.line_to(ox + 18.5 * s, oy + 10.5 * s);
+    let _ = cr.stroke();
+
+    // Door cutout
+    round(cr, s, ox, oy, 10.0, 14.5, 4.0, 5.5, 1.0);
+    let _ = cr.stroke();
+}
+
+fn draw_nav_cooling(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    let cx = ox + 12.0 * s;
+    let cy = oy + 12.0 * s;
+
+    // Center hub
+    cr.arc(cx, cy, 2.6 * s, 0.0, 2.0 * std::f64::consts::PI);
+    let _ = cr.fill();
+
+    // 4 Curved Fan blades
+    cr.set_line_width(2.2 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    for i in 0..4 {
+        let angle = i as f64 * std::f64::consts::FRAC_PI_2;
+        let x1 = cx + angle.cos() * 3.5 * s;
+        let y1 = cy + angle.sin() * 3.5 * s;
+        let x2 = cx + (angle + 0.55).cos() * 8.5 * s;
+        let y2 = cy + (angle + 0.55).sin() * 8.5 * s;
+        cr.move_to(x1, y1);
+        cr.curve_to(
+            cx + (angle + 0.2).cos() * 6.0 * s,
+            cy + (angle + 0.2).sin() * 6.0 * s,
+            cx + (angle + 0.4).cos() * 7.5 * s,
+            cy + (angle + 0.4).sin() * 7.5 * s,
+            x2,
+            y2,
+        );
+        let _ = cr.stroke();
+    }
+}
+
+fn draw_nav_usage(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    round(cr, s, ox, oy, 4.5, 12.0, 3.5, 8.5, 1.2);
+    let _ = cr.fill();
+    round(cr, s, ox, oy, 10.25, 5.0, 3.5, 15.5, 1.2);
+    let _ = cr.fill();
+    round(cr, s, ox, oy, 16.0, 8.5, 3.5, 12.0, 1.2);
+    let _ = cr.fill();
+}
+
+fn draw_nav_lighting(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    cr.set_line_width(1.8 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    round(cr, s, ox, oy, 3.0, 6.0, 18.0, 12.5, 2.0);
+    let _ = cr.stroke();
+    for r in 0..2 {
+        for col in 0..4 {
+            let kx = ox + (5.5 + col as f64 * 3.6) * s;
+            let ky = oy + (9.0 + r as f64 * 4.0) * s;
+            cr.arc(kx, ky, 0.9 * s, 0.0, 2.0 * std::f64::consts::PI);
+            let _ = cr.fill();
+        }
+    }
+}
+
+fn draw_nav_battery(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    cr.set_line_width(1.8 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    round(cr, s, ox, oy, 3.0, 7.0, 15.0, 10.0, 2.0);
+    let _ = cr.stroke();
+    round(cr, s, ox, oy, 18.5, 10.0, 2.0, 4.0, 0.8);
+    let _ = cr.fill();
+    cr.move_to(ox + 11.5 * s, oy + 8.5 * s);
+    cr.line_to(ox + 8.5 * s, oy + 12.5 * s);
+    cr.line_to(ox + 11.0 * s, oy + 12.5 * s);
+    cr.line_to(ox + 9.5 * s, oy + 15.5 * s);
+    cr.line_to(ox + 13.5 * s, oy + 11.5 * s);
+    cr.line_to(ox + 11.0 * s, oy + 11.5 * s);
+    cr.close_path();
+    let _ = cr.fill();
+}
+
+fn draw_nav_tools(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    cr.set_line_width(2.0 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    cr.move_to(ox + 4.5 * s, oy + 19.5 * s);
+    cr.line_to(ox + 19.5 * s, oy + 4.5 * s);
+    let _ = cr.stroke();
+    cr.move_to(ox + 19.5 * s, oy + 19.5 * s);
+    cr.line_to(ox + 4.5 * s, oy + 4.5 * s);
+    let _ = cr.stroke();
+    cr.arc(ox + 4.5 * s, oy + 4.5 * s, 1.8 * s, 0.0, 2.0 * std::f64::consts::PI);
+    let _ = cr.fill();
+    cr.arc(ox + 19.5 * s, oy + 4.5 * s, 1.8 * s, 0.0, 2.0 * std::f64::consts::PI);
+    let _ = cr.fill();
+}
+
+fn draw_nav_settings(cr: &gtk4::cairo::Context, w: f64, h: f64, c: (f64, f64, f64)) {
+    let (s, ox, oy) = grid(w, h);
+    cr.set_source_rgb(c.0, c.1, c.2);
+    let cx = ox + 12.0 * s;
+    let cy = oy + 12.0 * s;
+    cr.set_line_width(2.2 * s);
+    cr.arc(cx, cy, 6.2 * s, 0.0, 2.0 * std::f64::consts::PI);
+    let _ = cr.stroke();
+    cr.set_line_width(2.4 * s);
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    for i in 0..6 {
+        let a = i as f64 * std::f64::consts::PI / 3.0;
+        let x1 = cx + a.cos() * 6.0 * s;
+        let y1 = cy + a.sin() * 6.0 * s;
+        let x2 = cx + a.cos() * 8.8 * s;
+        let y2 = cy + a.sin() * 8.8 * s;
+        cr.move_to(x1, y1);
+        cr.line_to(x2, y2);
+        let _ = cr.stroke();
+    }
+    cr.arc(cx, cy, 2.2 * s, 0.0, 2.0 * std::f64::consts::PI);
+    let _ = cr.fill();
+}

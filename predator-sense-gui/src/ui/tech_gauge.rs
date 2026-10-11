@@ -64,7 +64,7 @@ pub fn default_rings(accent: (f64, f64, f64), _speed_scale: f64) -> Vec<GaugeRin
             band_inner_px: 3.0,
             segments: vec![(135.0, 405.0, (accent.0, accent.1, accent.2, 0.95))],
             period_s: 0.0,
-            glow: None,
+            glow: Some((accent.0, accent.1, accent.2, 0.18)),
         },
     ]
 }

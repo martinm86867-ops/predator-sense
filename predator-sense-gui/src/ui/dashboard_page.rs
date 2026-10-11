@@ -254,6 +254,7 @@ fn build_instrument_cluster() -> gtk::Box {
     for (label, unit, kind) in specs {
         let card = gtk::Box::new(gtk::Orientation::Vertical, 2);
         card.add_css_class("spec-card");
+        card.add_css_class("instrument-card");
         card.set_hexpand(true);
         card.set_valign(gtk::Align::Center);
 

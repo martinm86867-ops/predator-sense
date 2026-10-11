@@ -177,6 +177,16 @@ fn draw_card(cr: &gtk4::cairo::Context, w: f64, h: f64, accent: (f64, f64, f64),
     cr.set_source_rgba(r, g, b, alpha);
     cr.set_line_width(1.0);
     let _ = cr.stroke();
+
+    // Top specular highlight (tactile frosted-glass chamfer)
+    if !crate::ui::brand_theme::is_light_mode() && w > radius * 2.0 {
+        cr.new_path();
+        cr.move_to(radius + 2.0, 0.75);
+        cr.line_to(w - radius - 2.0, 0.75);
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.10);
+        cr.set_line_width(1.0);
+        let _ = cr.stroke();
+    }
 }
 
 fn draw_background_simple(cr: &gtk4::cairo::Context, w: f64, h: f64, accent: (f64, f64, f64)) {
