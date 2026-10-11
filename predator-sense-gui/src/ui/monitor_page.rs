@@ -325,20 +325,17 @@ fn do_update(state: &Rc<RefCell<MonitorState>>, w: &MonitorWidgets) {
             .map(|v| v.to_string())
             .unwrap_or("--".into()),
     );
-    w.cpu_freq_w.set_value(
-        &data
-            .cpu_freq_mhz
-            .map(|v| v.to_string())
-            .unwrap_or("--".into()),
+    let cpu_mhz = data.cpu_freq_mhz.unwrap_or(0);
+    w.cpu_freq_w.set_reading(
+        &if cpu_mhz > 0 { cpu_mhz.to_string() } else { "--".into() },
+        cpu_mhz as f64 / 5200.0,
     );
 
     // GPU stats
-    w.gpu_clock_w.set_value(
-        &data
-            .gpu_info
-            .clock_mhz
-            .map(|v| v.to_string())
-            .unwrap_or("--".into()),
+    let gpu_mhz = data.gpu_info.clock_mhz.unwrap_or(0);
+    w.gpu_clock_w.set_reading(
+        &if gpu_mhz > 0 { gpu_mhz.to_string() } else { "--".into() },
+        gpu_mhz as f64 / 2600.0,
     );
     update_stat_value(
         &w.gpu_mem_w,
@@ -387,9 +384,10 @@ fn draw_temp_graph(
     cr.rectangle(0.0, 0.0, w, h);
     let _ = cr.fill();
 
-    // Grid lines
-    cr.set_source_rgba(0.2, 0.22, 0.25, 0.5);
-    cr.set_line_width(0.5);
+    // Grid lines: subtle and non-distracting
+    let grid_alpha = if crate::ui::brand_theme::is_light_mode() { 0.08 } else { 0.06 };
+    cr.set_source_rgba(1.0, 1.0, 1.0, grid_alpha);
+    cr.set_line_width(0.75);
     for i in 0..=4 {
         let y = margin + gh * (i as f64 / 4.0);
         cr.move_to(margin, y);
@@ -418,8 +416,12 @@ fn draw_temp_graph(
         0.0
     };
 
-    // Fill area under curve
-    cr.set_source_rgba(color.0, color.1, color.2, 0.15);
+    // Smooth gradient fill under curve
+    let fill_grad = gtk4::cairo::LinearGradient::new(0.0, margin, 0.0, margin + gh);
+    fill_grad.add_color_stop_rgba(0.0, color.0, color.1, color.2, 0.28);
+    fill_grad.add_color_stop_rgba(1.0, color.0, color.1, color.2, 0.02);
+    let _ = cr.set_source(&fill_grad);
+
     let start_x = margin + (HISTORY_SIZE - n) as f64 * step_x;
     cr.move_to(start_x, margin + gh);
     for (i, &temp) in history.iter().enumerate() {
@@ -432,7 +434,21 @@ fn draw_temp_graph(
     cr.close_path();
     let _ = cr.fill();
 
-    // Line
+    // Subtle neon glow under curve line
+    cr.set_source_rgba(color.0, color.1, color.2, 0.30);
+    cr.set_line_width(4.5);
+    for (i, &temp) in history.iter().enumerate() {
+        let x = start_x + i as f64 * step_x;
+        let y = margin + gh - ((temp - min_temp) / range).clamp(0.0, 1.0) * gh;
+        if i == 0 {
+            cr.move_to(x, y);
+        } else {
+            cr.line_to(x, y);
+        }
+    }
+    let _ = cr.stroke();
+
+    // Sharp curve line
     cr.set_source_rgba(color.0, color.1, color.2, 1.0);
     cr.set_line_width(2.0);
     for (i, &temp) in history.iter().enumerate() {
@@ -445,6 +461,22 @@ fn draw_temp_graph(
         }
     }
     let _ = cr.stroke();
+
+    // Glowing indicator pip at the latest reading
+    if let Some(&latest) = history.back() {
+        let tip_x = last_x;
+        let tip_y = margin + gh - ((latest - min_temp) / range).clamp(0.0, 1.0) * gh;
+
+        // Halo
+        cr.set_source_rgba(color.0, color.1, color.2, 0.45);
+        cr.arc(tip_x, tip_y, 5.0, 0.0, 2.0 * std::f64::consts::PI);
+        let _ = cr.fill();
+
+        // Core pip
+        cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+        cr.arc(tip_x, tip_y, 2.5, 0.0, 2.0 * std::f64::consts::PI);
+        let _ = cr.fill();
+    }
 }
 
 fn create_stat_widget(title: &str, value: &str, unit: &str) -> gtk::Box {

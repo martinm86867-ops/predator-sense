@@ -176,13 +176,33 @@ pub(crate) fn copy_file(source: &Path, destination: &Path) -> AppResult {
         fs::create_dir_all(parent)
             .map_err(|error| format!("falha ao criar {}: {error}", parent.display()))?;
     }
-    fs::copy(source, destination).map_err(|error| {
-        format!(
-            "falha ao copiar {} para {}: {error}",
-            source.display(),
-            destination.display()
-        )
-    })?;
+    // Attempt standard copy first; if destination is running/busy (ETXTBSY / OS error 26),
+    // write to an adjacent temporary file and atomically rename over the running binary.
+    if let Err(error) = fs::copy(source, destination) {
+        if error.raw_os_error() == Some(26) || destination.is_file() {
+            let temp_dest = destination.with_extension("tmp-upgrade");
+            fs::copy(source, &temp_dest).map_err(|e| {
+                format!(
+                    "falha ao copiar {} para {}: {e}",
+                    source.display(),
+                    temp_dest.display()
+                )
+            })?;
+            fs::rename(&temp_dest, destination).map_err(|e| {
+                format!(
+                    "falha ao renomear {} para {}: {e}",
+                    temp_dest.display(),
+                    destination.display()
+                )
+            })?;
+        } else {
+            return Err(format!(
+                "falha ao copiar {} para {}: {error}",
+                source.display(),
+                destination.display()
+            ));
+        }
+    }
     Ok(())
 }
 

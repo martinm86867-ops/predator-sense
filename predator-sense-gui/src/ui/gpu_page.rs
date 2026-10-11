@@ -2,7 +2,6 @@ use gtk4::prelude::*;
 use gtk4::{self as gtk, glib};
 use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
-use std::f64::consts::PI;
 use std::rc::Rc;
 
 use crate::hardware::gpu::{self, read_gpu_metrics, GpuLiveState};
@@ -564,11 +563,22 @@ fn draw_gauge_arc(cr: &gtk4::cairo::Context, w: f64, h: f64, fraction: f64) {
     let cy = h / 2.0;
     let r = (w.min(h) / 2.0) - 6.0;
 
-    // Background ring
-    cr.set_line_width(5.0);
-    cr.set_dash(&[4.0, 2.0], 0.0);
-    cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
-    cr.arc(cx, cy, r, 0.0, 2.0 * PI);
+    let deg2rad = |d: f64| d * (std::f64::consts::PI / 180.0);
+    let start_deg = 150.0;
+    let sweep_deg = 240.0;
+    let end_deg = start_deg + sweep_deg;
+
+    cr.set_line_cap(gtk4::cairo::LineCap::Round);
+    cr.set_dash(&[], 0.0);
+
+    // Track
+    cr.set_line_width(5.5);
+    if crate::ui::brand_theme::is_light_mode() {
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.08);
+    } else {
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
+    }
+    cr.arc(cx, cy, r, deg2rad(start_deg), deg2rad(end_deg));
     let _ = cr.stroke();
 
     // Progress arc
@@ -576,12 +586,23 @@ fn draw_gauge_arc(cr: &gtk4::cairo::Context, w: f64, h: f64, fraction: f64) {
         let (rv, gv, bv) = if fraction < 0.6 {
             crate::ui::brand_theme::accent().bright
         } else if fraction < 0.8 {
-            (0.9, 0.7, 0.0)
+            (0.88, 0.55, 0.08)
         } else {
-            (0.9, 0.2, 0.1)
+            (0.93, 0.26, 0.22)
         };
+
+        let cur_end_deg = start_deg + fraction.clamp(0.0, 1.0) * sweep_deg;
+
+        // Ambient glow
+        cr.set_source_rgba(rv, gv, bv, 0.22);
+        cr.set_line_width(9.0);
+        cr.arc(cx, cy, r, deg2rad(start_deg), deg2rad(cur_end_deg));
+        let _ = cr.stroke();
+
+        // Solid arc
         cr.set_source_rgba(rv, gv, bv, 1.0);
-        cr.arc(cx, cy, r, -PI / 2.0, -PI / 2.0 + fraction * 2.0 * PI);
+        cr.set_line_width(5.5);
+        cr.arc(cx, cy, r, deg2rad(start_deg), deg2rad(cur_end_deg));
         let _ = cr.stroke();
     }
 }

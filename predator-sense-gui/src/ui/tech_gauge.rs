@@ -8,10 +8,15 @@
 
 use gtk4::prelude::*;
 use gtk4::{self as gtk, pango};
+use std::cell::Cell;
+use std::f64::consts::PI;
+use std::rc::Rc;
 
 /// One RGBA color tuple (`r`, `g`, `b`, `a`), each `0.0..=1.0`.
+#[allow(dead_code)]
 type Rgba = (f64, f64, f64, f64);
 /// One lit arc segment: `(start_deg, end_deg, color)`.
+#[allow(dead_code)]
 type ArcSegment = (f64, f64, Rgba);
 
 /// One animated ring: a set of arc segments at a fixed radius band, spinning
@@ -19,6 +24,7 @@ type ArcSegment = (f64, f64, Rgba);
 /// reference's own fixed-px mask insets - these rings stay the same visual
 /// thickness whether the gauge is drawn at 90px or 320px, same as the CSS.
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct GaugeRing {
     /// Ring's own outer edge as a fraction of the gauge's radius (e.g. 0.96).
     pub outer_frac: f64,
@@ -38,6 +44,7 @@ pub struct GaugeRing {
     pub glow: Option<Rgba>,
 }
 
+#[allow(dead_code)]
 fn deg_to_rad(d: f64) -> f64 {
     d * std::f64::consts::PI / 180.0
 }
@@ -46,6 +53,7 @@ fn deg_to_rad(d: f64) -> f64 {
 /// that leaves a gap at the bottom - a calm activity-ring look instead of the
 /// earlier seven spinning decorative layers. `speed_scale` is accepted for
 /// API compatibility, but the current design is deliberately still.
+#[allow(dead_code)]
 pub fn default_rings(accent: (f64, f64, f64), _speed_scale: f64) -> Vec<GaugeRing> {
     vec![
         // Faint full-circle track.
@@ -73,6 +81,7 @@ pub fn default_rings(accent: (f64, f64, f64), _speed_scale: f64) -> Vec<GaugeRin
 /// `radius`, at animation phase `phase_secs` (elapsed seconds since the
 /// gauge started spinning - not a frame count, so speed stays correct
 /// regardless of the redraw rate).
+#[allow(dead_code)]
 pub fn draw_rings(
     cr: &gtk4::cairo::Context,
     cx: f64,
@@ -132,12 +141,21 @@ pub struct TechGauge {
     /// Place this in your layout.
     pub widget: gtk::Widget,
     pub value_label: gtk::Label,
+    fraction: Rc<Cell<f64>>,
+    drawing_area: gtk::DrawingArea,
 }
 
 impl TechGauge {
     /// Updates the big center value text (e.g. a fresh MHz/W reading).
     pub fn set_value(&self, text: &str) {
         self.value_label.set_label(text);
+    }
+
+    /// Updates both the value text and the dynamic sweep fraction (0.0..=1.0).
+    pub fn set_reading(&self, text: &str, frac: f64) {
+        self.value_label.set_label(text);
+        self.fraction.set(frac.clamp(0.0, 1.0));
+        self.drawing_area.queue_draw();
     }
 }
 
@@ -196,21 +214,83 @@ pub fn build(
     sub: &str,
     value: &str,
     unit: &str,
-    fast: bool,
+    _fast: bool,
 ) -> TechGauge {
     let overlay = gtk::Overlay::new();
     overlay.set_size_request(size_px, size_px);
 
-    let rings = default_rings(accent, if fast { 0.46 } else { 1.0 });
+    let fraction = Rc::new(Cell::new(0.0));
+    let fraction_draw = fraction.clone();
 
     let da = gtk::DrawingArea::new();
     da.set_hexpand(true);
     da.set_vexpand(true);
+    let accent_c = accent;
     da.set_draw_func(move |_a, cr, w, h| {
         let cx = w as f64 / 2.0;
         let cy = h as f64 / 2.0;
         let radius = (w.min(h) as f64) / 2.0;
-        draw_rings(cr, cx, cy, radius, &rings, 0.0);
+        let frac = fraction_draw.get();
+
+        let deg2rad = |d: f64| d * (PI / 180.0);
+        let start_deg = 135.0;
+        let sweep_deg = 270.0;
+        let end_deg = start_deg + sweep_deg;
+
+        cr.set_line_cap(gtk4::cairo::LineCap::Round);
+
+        // 1. Recessed circular track (270° from 135° to 405°)
+        cr.set_line_width(4.5);
+        if crate::ui::brand_theme::is_light_mode() {
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.09);
+        } else {
+            cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
+        }
+        cr.arc(cx, cy, radius * 0.86, deg2rad(start_deg), deg2rad(end_deg));
+        let _ = cr.stroke();
+
+        // 2. Calibration ticks (5 ticks at 0%, 25%, 50%, 75%, 100%)
+        let tick_count = 5;
+        for i in 0..tick_count {
+            let f = i as f64 / (tick_count - 1) as f64;
+            let a = deg2rad(start_deg + f * sweep_deg);
+            let r_inner = radius * 0.86 - 6.0;
+            let r_outer = radius * 0.86 - 3.0;
+            cr.set_line_width(1.0);
+            if crate::ui::brand_theme::is_light_mode() {
+                cr.set_source_rgba(0.0, 0.0, 0.0, 0.20);
+            } else {
+                cr.set_source_rgba(1.0, 1.0, 1.0, 0.20);
+            }
+            cr.move_to(cx + a.cos() * r_inner, cy + a.sin() * r_inner);
+            cr.line_to(cx + a.cos() * r_outer, cy + a.sin() * r_outer);
+            let _ = cr.stroke();
+        }
+
+        // 3. Dynamic progress arc
+        if frac > 0.005 {
+            let cur_end_deg = start_deg + frac * sweep_deg;
+
+            // Ambient neon glow
+            cr.set_line_width(9.5);
+            cr.set_source_rgba(accent_c.0, accent_c.1, accent_c.2, 0.20);
+            cr.arc(cx, cy, radius * 0.86, deg2rad(start_deg), deg2rad(cur_end_deg));
+            let _ = cr.stroke();
+
+            // Crisp foreground arc
+            cr.set_line_width(4.5);
+            cr.set_source_rgba(accent_c.0, accent_c.1, accent_c.2, 0.95);
+            cr.arc(cx, cy, radius * 0.86, deg2rad(start_deg), deg2rad(cur_end_deg));
+            let _ = cr.stroke();
+
+            // Glowing needle head pip
+            let a_cur = deg2rad(cur_end_deg);
+            let px = cx + a_cur.cos() * radius * 0.86;
+            let py = cy + a_cur.sin() * radius * 0.86;
+            cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+            cr.arc(px, py, 2.0, 0.0, 2.0 * PI);
+            let _ = cr.fill();
+        }
     });
     overlay.set_child(Some(&da));
 
@@ -246,5 +326,7 @@ pub fn build(
     TechGauge {
         widget: overlay.upcast(),
         value_label,
+        fraction,
+        drawing_area: da,
     }
 }

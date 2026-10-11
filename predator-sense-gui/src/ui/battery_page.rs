@@ -395,48 +395,100 @@ fn draw_battery_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, pct: u32, charg
     let cy = h / 2.0;
     let r = 60.0;
 
-    // Background ring
-    cr.set_line_width(10.0);
+    let deg2rad = |d: f64| d * (PI / 180.0);
+    let start_deg = 150.0;
+    let sweep_deg = 240.0;
+    let end_deg = start_deg + sweep_deg;
+
     cr.set_line_cap(gtk4::cairo::LineCap::Round);
-    cr.set_dash(&[6.0, 3.0], 0.0);
-    cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
-    cr.arc(cx, cy, r, 0.0, 2.0 * PI);
+    cr.set_dash(&[], 0.0);
+
+    // 1. Background recessed groove
+    cr.set_line_width(8.0);
+    if crate::ui::brand_theme::is_light_mode() {
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.08);
+    } else {
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.08);
+    }
+    cr.arc(cx, cy, r, deg2rad(start_deg), deg2rad(end_deg));
     let _ = cr.stroke();
 
-    // Progress arc - color based on charge level
+    // 2. Calibration ticks (5 ticks at 0%, 25%, 50%, 75%, 100%)
+    let tick_count = 5;
+    for i in 0..tick_count {
+        let f = i as f64 / (tick_count - 1) as f64;
+        let a = deg2rad(start_deg + f * sweep_deg);
+        let r_inner = r - 8.0;
+        let r_outer = r - 4.5;
+        cr.set_line_width(1.2);
+        if crate::ui::brand_theme::is_light_mode() {
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.20);
+        } else {
+            cr.set_source_rgba(1.0, 1.0, 1.0, 0.20);
+        }
+        cr.move_to(cx + a.cos() * r_inner, cy + a.sin() * r_inner);
+        cr.line_to(cx + a.cos() * r_outer, cy + a.sin() * r_outer);
+        let _ = cr.stroke();
+    }
+
+    // 3. Progress arc - color based on charge level
     let frac = (pct as f64 / 100.0).clamp(0.0, 1.0);
     let (rv, gv, bv) = if pct <= 20 {
-        (0.9, 0.2, 0.1) // red
+        (0.93, 0.26, 0.22) // red
     } else if pct <= 50 {
-        (0.9, 0.7, 0.0) // yellow
+        (0.88, 0.55, 0.08) // amber
     } else {
-        (0.0, 0.8, 0.5) // green
+        (0.24, 0.78, 0.45) // green
     };
-    cr.set_source_rgba(rv, gv, bv, 1.0);
-    cr.set_line_width(10.0);
-    cr.set_dash(&[6.0, 3.0], 0.0);
-    cr.arc(cx, cy, r, -PI / 2.0, -PI / 2.0 + frac * 2.0 * PI);
-    let _ = cr.stroke();
+
+    if frac > 0.005 {
+        let cur_end_deg = start_deg + frac * sweep_deg;
+
+        // Ambient glow
+        cr.set_source_rgba(rv, gv, bv, 0.24);
+        cr.set_line_width(13.0);
+        cr.arc(cx, cy, r, deg2rad(start_deg), deg2rad(cur_end_deg));
+        let _ = cr.stroke();
+
+        // Solid arc
+        cr.set_source_rgba(rv, gv, bv, 1.0);
+        cr.set_line_width(8.0);
+        cr.arc(cx, cy, r, deg2rad(start_deg), deg2rad(cur_end_deg));
+        let _ = cr.stroke();
+
+        // Needle head pip
+        let a_cur = deg2rad(cur_end_deg);
+        let px = cx + a_cur.cos() * r;
+        let py = cy + a_cur.sin() * r;
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.95);
+        cr.arc(px, py, 2.2, 0.0, 2.0 * PI);
+        let _ = cr.fill();
+    }
 
     // Percentage text
-    cr.set_dash(&[], 0.0);
-    cr.set_source_rgb(1.0, 1.0, 1.0);
-    cr.select_font_face("Sans", gtk4::cairo::FontSlant::Normal, gtk4::cairo::FontWeight::Bold);
-    cr.set_font_size(32.0);
+    if crate::ui::brand_theme::is_light_mode() {
+        cr.set_source_rgb(0.06, 0.09, 0.16);
+    } else {
+        cr.set_source_rgb(1.0, 1.0, 1.0);
+    }
+    cr.select_font_face("-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Ubuntu', sans-serif", gtk4::cairo::FontSlant::Normal, gtk4::cairo::FontWeight::Bold);
+    cr.set_font_size(30.0);
     let txt = format!("{}%", pct);
-    let ext = cr.text_extents(&txt).unwrap();
-    cr.move_to(cx - ext.width() / 2.0, cy + 4.0);
-    let _ = cr.show_text(&txt);
+    if let Ok(ext) = cr.text_extents(&txt) {
+        cr.move_to(cx - ext.width() / 2.0, cy + 4.0);
+        let _ = cr.show_text(&txt);
+    }
 
     // Charging indicator
     if charging {
-        cr.set_font_size(12.0);
+        cr.set_font_size(14.0);
         let (r, g, b) = crate::ui::brand_theme::accent().bright;
-        cr.set_source_rgba(r, g, b, 0.9);
+        cr.set_source_rgba(r, g, b, 0.95);
         let ct = "⚡";
-        let ext2 = cr.text_extents(ct).unwrap();
-        cr.move_to(cx - ext2.width() / 2.0, cy + 22.0);
-        let _ = cr.show_text(ct);
+        if let Ok(ext2) = cr.text_extents(ct) {
+            cr.move_to(cx - ext2.width() / 2.0, cy + 24.0);
+            let _ = cr.show_text(ct);
+        }
     }
 }
 
