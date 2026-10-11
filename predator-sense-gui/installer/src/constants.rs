@@ -110,6 +110,7 @@ pub(crate) mod command {
     pub const PACMAN: &str = "pacman";
     pub const PKG_CONFIG: &str = "pkg-config";
     pub const RMMOD: &str = "rmmod";
+    pub const SETFACL: &str = "setfacl";
     pub const SUDO: &str = "sudo";
     pub const SYSTEMCTL: &str = "systemctl";
     pub const SYSTEMD_HWDB: &str = "systemd-hwdb";

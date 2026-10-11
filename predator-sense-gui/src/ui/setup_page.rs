@@ -224,7 +224,7 @@ fn check_deps_list() -> Vec<String> {
     use std::process::Command;
     let mut missing = Vec::new();
 
-    for (cmd, pkg) in &[("make", "build-essential"), ("gcc", "gcc")] {
+    for (cmd, pkg) in &[("make", "build-essential"), ("gcc", "gcc"), ("dkms", "dkms")] {
         if Command::new("which").arg(cmd).output().map(|o| !o.status.success()).unwrap_or(true) {
             missing.push(pkg.to_string());
         }

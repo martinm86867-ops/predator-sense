@@ -485,6 +485,20 @@ pub(crate) fn entrypoint(args: &[String]) -> AppResult {
     }
     // SAFETY: geteuid has no preconditions.
     if command.needs_root() && unsafe { libc::geteuid() } != 0 {
+        if command_exists(command::SUDO) {
+            println!("  Elevating privileges via sudo to execute installer...");
+            let current_exe = running_executable_source()?;
+            let status = Command::new(command::SUDO)
+                .arg(&current_exe)
+                .args(args)
+                .status()
+                .map_err(|error| format!("falha ao executar sudo: {error}"))?;
+            if status.success() {
+                return Ok(());
+            } else {
+                std::process::exit(status.code().unwrap_or(1));
+            }
+        }
         return Err(i18n::text(Language::detect(), Message::RunAsRoot).into());
     }
 
@@ -777,6 +791,7 @@ impl Installer {
                     "curl",
                     "tar",
                     "sudo",
+                    "acl",
                 ],
             ),
             PackageManager::Pacman => run(
@@ -794,6 +809,7 @@ impl Installer {
                     "curl",
                     "tar",
                     "sudo",
+                    "acl",
                 ],
             ),
             PackageManager::Zypper => run(
@@ -810,6 +826,7 @@ impl Installer {
                     "curl",
                     "tar",
                     "sudo",
+                    "acl",
                 ],
             ),
             PackageManager::Apt => {
@@ -827,6 +844,7 @@ impl Installer {
                     "curl",
                     "tar",
                     "sudo",
+                    "acl",
                 ])
             }
         }
@@ -1309,16 +1327,16 @@ impl Installer {
         run(command::USERMOD, ["-aG", "input", self.user.name.as_str()])?;
 
         const HID_RULE: &str = concat!(
-            "SUBSYSTEM==\"hidraw\", ATTRS{name}==\"ENEK5130:*\", MODE=\"0660\", GROUP=\"input\"\n",
-            "SUBSYSTEM==\"hidraw\", KERNELS==\"0018:0CF2:5130.*\", MODE=\"0660\", GROUP=\"input\"\n",
+            "SUBSYSTEM==\"hidraw\", ATTRS{name}==\"ENEK5130:*\", MODE=\"0660\", GROUP=\"input\", TAG+=\"uaccess\"\n",
+            "SUBSYSTEM==\"hidraw\", KERNELS==\"0018:0CF2:5130.*\", MODE=\"0660\", GROUP=\"input\", TAG+=\"uaccess\"\n",
             // 2024+ generation (issue #26): keyboard/cover-logo RGB moved off
             // this I2C-HID chip entirely onto plain USB HID feature reports
             // sent to a Sunrex keyboard controller and a Darfon logo
             // controller (magic_rgb.rs). Neither ever got a udev rule, so
             // /dev/hidrawN stayed root-only and every write failed with
             // "Permission denied" even though the protocol itself was right.
-            "SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"05af\", MODE=\"0660\", GROUP=\"input\"\n",
-            "SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"0d62\", MODE=\"0660\", GROUP=\"input\"\n",
+            "SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"05af\", MODE=\"0660\", GROUP=\"input\", TAG+=\"uaccess\"\n",
+            "SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"0d62\", MODE=\"0660\", GROUP=\"input\", TAG+=\"uaccess\"\n",
             // Acer embedded controller, exposed as an I2C-HID device. The
             // physical mode-switch key reports here and nowhere else - it
             // generates no input-subsystem event at all - so without read
@@ -1331,14 +1349,30 @@ impl Installer {
             // Read-only for the group on purpose - unlike the RGB controllers
             // above nothing here ever writes to the EC, and this is the one
             // device on the list that can change machine state.
-            "SUBSYSTEM==\"hidraw\", KERNELS==\"*:1025:*\", MODE=\"0640\", GROUP=\"input\"\n",
+            "SUBSYSTEM==\"hidraw\", KERNELS==\"*:1025:*\", MODE=\"0640\", GROUP=\"input\", TAG+=\"uaccess\"\n",
         );
         const EC_RULE: &str =
-            "SUBSYSTEM==\"chardev\", KERNEL==\"ec\", MODE=\"0640\", GROUP=\"input\"\n";
+            "SUBSYSTEM==\"chardev\", KERNEL==\"ec\", MODE=\"0640\", GROUP=\"input\", TAG+=\"uaccess\"\n";
         write_text(Path::new(path::HID_UDEV_RULE), HID_RULE, mode::REGULAR_FILE)?;
         write_text(Path::new(path::EC_UDEV_RULE), EC_RULE, mode::REGULAR_FILE)?;
         run(command::UDEVADM, ["control", "--reload-rules"])?;
-        run(command::UDEVADM, ["trigger"])
+        run(command::UDEVADM, ["trigger"])?;
+
+        if command_exists(command::SETFACL) {
+            if let Ok(keyboards) = crate::hotkey::find_keyboards(Path::new(path::INPUT_DEVICES)) {
+                for device in keyboards {
+                    let _ = run_quiet(
+                        command::SETFACL,
+                        [
+                            "-m",
+                            &format!("u:{}:rw", self.user.name),
+                            device.to_string_lossy().as_ref(),
+                        ],
+                    );
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Fn+F9/F10 keyboard-illumination keys on the PH315-54 are mapped to
@@ -1545,6 +1579,12 @@ impl Installer {
         if !source.join(format!("{MODULE_NAME}.c")).is_file() {
             return Err("código fonte do módulo não encontrado".into());
         }
+        if !has_kernel_headers() {
+            self.install_kernel_headers()?;
+        }
+        self.ensure_build_tool("make")?;
+        self.ensure_build_tool("gcc")?;
+        self.ensure_build_tool(command::DKMS)?;
         if !command_exists(command::DKMS) {
             return Err("dkms não está instalado".into());
         }

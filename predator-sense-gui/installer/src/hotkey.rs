@@ -953,7 +953,7 @@ fn rotate_log(path: &Path) {
     let _ = fs::rename(path, backup(1));
 }
 
-fn find_keyboards(devices_file: &Path) -> AppResult<Vec<PathBuf>> {
+pub(crate) fn find_keyboards(devices_file: &Path) -> AppResult<Vec<PathBuf>> {
     let contents = fs::read_to_string(devices_file).map_err(|error| {
         format!(
             "predator-sense-hotkey: não foi possível ler {}: {error}",

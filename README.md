@@ -80,21 +80,41 @@ The installer, privileged helper, hotkey listener, and tray service are all one 
 
 ### Build from source
 
-**Prerequisites** (Debian/Ubuntu shown; adjust for other distros):
-
-```console
-sudo apt install libgtk-4-dev libadwaita-1-dev pkg-config build-essential \
-    gcc make dkms curl tar linux-headers-$(uname -r)
-```
-
-Install Rust, then build and install:
+Clone the repository:
 
 ```console
 git clone https://github.com/martinm86867-ops/predator-sense.git
-cd predator-sense/predator-sense-gui
+cd predator-sense
+```
 
-cargo build --release
+#### Option A: One-step Build & Install (Recommended)
+
+```console
+make install
+```
+*(Runs the build and launches the installer with automatic dependency resolution.)*
+
+#### Option B: Automated Installer Script
+
+```console
+./scripts/install.sh
+```
+
+#### Option C: Manual Build with Cargo
+
+Install prerequisites (Debian/Ubuntu shown; adjust for Fedora, Arch, or openSUSE):
+
+```console
+sudo apt install libgtk-4-dev libadwaita-1-dev pkg-config build-essential \
+    gcc make dkms curl tar acl linux-headers-$(uname -r)
+```
+
+Then build and install:
+
+```console
+cd predator-sense-gui
 cargo build --release --manifest-path installer/Cargo.toml
+cargo build --release
 
 sudo installer/target/release/predator-sense-installer --install
 /opt/predator-sense/predator-sense

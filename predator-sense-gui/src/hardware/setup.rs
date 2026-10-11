@@ -105,6 +105,7 @@ fn check_build_dependencies() -> Vec<String> {
     let checks = [
         ("make", "build-essential"),
         ("gcc", "gcc"),
+        ("dkms", "dkms"),
     ];
 
     for (cmd, pkg) in &checks {
@@ -227,12 +228,12 @@ pub fn install_service() -> SetupResult {
     // SAFETY: geteuid has no preconditions.
     let output = if unsafe { libc::geteuid() } == 0 {
         Command::new(&installer)
-            .arg(installer_cli::RELOAD_MODULE_ARGUMENT)
+            .arg(installer_cli::INSTALL_ARGUMENT)
             .output()
     } else {
         Command::new("pkexec")
             .arg(&installer)
-            .arg(installer_cli::RELOAD_MODULE_ARGUMENT)
+            .arg(installer_cli::INSTALL_ARGUMENT)
             .output()
     };
 
