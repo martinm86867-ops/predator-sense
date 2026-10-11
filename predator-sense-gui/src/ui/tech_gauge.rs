@@ -191,7 +191,9 @@ fn sized_label(
     let label = gtk::Label::new(Some(text));
     let mut fd = pango::FontDescription::new();
     if predator {
-        fd.set_family("Predator");
+        fd.set_family("Predator, Inter, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif");
+    } else {
+        fd.set_family("Inter, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif");
     }
     fd.set_absolute_size(px * f64::from(pango::SCALE));
     fd.set_weight(weight);

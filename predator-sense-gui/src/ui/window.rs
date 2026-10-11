@@ -29,14 +29,8 @@ pub fn build(app: &adw::Application) {
     let window = gtk::ApplicationWindow::builder()
         .application(app)
         .title("Predator Sense")
-        // The actual mapped window ends up default_width+122 (fixed CSD/chrome
-        // overhead) x max(default_height, ~1172 - the sidebar+dashboard
-        // content's natural height floor, which default_height alone cannot
-        // go below). Values picked so the window opens at a consistent
-        // 1482x1172 every time - as close to the requested 1482x1126 as the
-        // content's own minimum allows.
-        .default_width(1360)
-        .default_height(1172)
+        .default_width(1280)
+        .default_height(820)
         .resizable(true)
         .decorated(true)
         .build();
@@ -937,54 +931,23 @@ fn build_main_content(app: &adw::Application, window: &gtk::ApplicationWindow) -
 
     layout.append(&sidebar);
 
-    // === CONTENT PANEL WRAPPER (rounded surface + subtle border) ===
-    let panel_wrapper = gtk::Overlay::new();
-    panel_wrapper.set_hexpand(true);
-    panel_wrapper.set_vexpand(true);
-
-    // Rounded panel surface background
-    let border_bg = gtk::DrawingArea::new();
-    border_bg.set_hexpand(true);
-    border_bg.set_vexpand(true);
-    border_bg.set_draw_func(|_a, cr, w, h| draw_panel_border(cr, w as f64, h as f64));
-    panel_wrapper.set_child(Some(&border_bg));
-
-    // Content directly in the panel (no scrollbar on home)
-    let content_wrapper = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    content_wrapper.set_margin_top(2);
-    content_wrapper.set_margin_bottom(2);
-    content_wrapper.set_margin_start(2);
-    content_wrapper.set_margin_end(2);
-    content_wrapper.set_hexpand(true);
-    content_wrapper.set_vexpand(true);
+    // === CONTENT PANEL (rounded surface + subtle border via CSS) ===
+    let content_panel = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    content_panel.add_css_class("content-panel");
+    content_panel.set_hexpand(true);
+    content_panel.set_vexpand(true);
+    content_panel.set_margin_top(6);
+    content_panel.set_margin_bottom(6);
+    content_panel.set_margin_start(2);
+    content_panel.set_margin_end(6);
 
     stack.set_hexpand(true);
     stack.set_vexpand(true);
-    content_wrapper.append(&stack);
+    content_panel.append(&stack);
 
-    panel_wrapper.add_overlay(&content_wrapper);
-    layout.append(&panel_wrapper);
+    layout.append(&content_panel);
 
     main_overlay.add_overlay(&layout);
-
-    // Refresh periódico da página de temperaturas (gauges precisam recalcular).
-    // Gated por visibilidade do window e da aba — evita rebuild quando no tray.
-    let stack_c = stack.clone();
-    glib::timeout_add_seconds_local(2, move || {
-        if !crate::app_state::is_window_visible() {
-            return glib::ControlFlow::Continue;
-        }
-        if stack_c.visible_child_name().as_deref() == Some("temperatures") {
-            let s = sensors::read_all_sensors();
-            let new_temps = temperatures_page::build(&s);
-            if let Some(old) = stack_c.child_by_name("temperatures") {
-                stack_c.remove(&old);
-            }
-            stack_c.add_named(&new_temps, Some("temperatures"));
-            stack_c.set_visible_child_name("temperatures");
-        }
-        glib::ControlFlow::Continue
-    });
 
     main_overlay
 }
@@ -1038,7 +1001,7 @@ fn nav_sidebar_width<'a>(
 ) -> i32 {
     let context = widget.pango_context();
     let mut font = gtk4::pango::FontDescription::new();
-    font.set_family("Predator");
+    font.set_family("Predator, Inter, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif");
     font.set_size(13 * gtk4::pango::SCALE);
     font.set_weight(gtk4::pango::Weight::Bold);
     let widest = labels
@@ -1106,25 +1069,6 @@ fn draw_menu_item(cr: &gtk4::cairo::Context, w: f64, h: f64, is_active: bool, is
         cr.set_source_rgba(1.0, 1.0, 1.0, 0.035);
         let _ = cr.fill();
     }
-}
-
-/// Draw the content panel: a rounded surface with a subtle accent border.
-fn draw_panel_border(cr: &gtk4::cairo::Context, w: f64, h: f64) {
-    let (r, g, b) = crate::ui::brand_theme::accent().bright;
-
-    rounded_rect(cr, 0.0, 0.0, w, h, 14.0);
-    // Panel surface: adapts to dark/light mode
-    if crate::ui::brand_theme::is_light_mode() {
-        cr.set_source_rgb(1.0, 1.0, 1.0);
-    } else {
-        cr.set_source_rgb(0.075, 0.094, 0.122);
-    }
-    let _ = cr.fill_preserve();
-    // 1px accent-tinted border.
-    let alpha = if crate::ui::brand_theme::is_light_mode() { 0.28 } else { 0.16 };
-    cr.set_source_rgba(r, g, b, alpha);
-    cr.set_line_width(1.0);
-    let _ = cr.stroke();
 }
 
 /// Draw brand mark

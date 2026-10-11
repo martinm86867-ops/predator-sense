@@ -465,31 +465,90 @@ fn draw_battery_gauge(cr: &gtk4::cairo::Context, w: f64, h: f64, pct: u32, charg
         let _ = cr.fill();
     }
 
-    // Percentage text
+    // 4. Centered Vector Battery Icon (above percentage)
+    let icon_w = 26.0;
+    let icon_h = 13.0;
+    let icon_x = cx - (icon_w + 2.0) / 2.0;
+    let icon_y = cy - 24.0;
+    let icon_r = 2.5;
+
+    // Battery body outline
+    cr.set_line_width(1.5);
+    cr.set_dash(&[], 0.0);
+    cr.set_source_rgba(rv, gv, bv, 0.85);
+    rounded_rect(cr, icon_x, icon_y, icon_w, icon_h, icon_r);
+    let _ = cr.stroke();
+
+    // Battery terminal notch (right side)
+    let cap_w = 2.2;
+    let cap_h = 5.0;
+    rounded_rect(cr, icon_x + icon_w + 1.0, icon_y + (icon_h - cap_h) / 2.0, cap_w, cap_h, 0.8);
+    let _ = cr.fill();
+
+    // Proportional fill bar inside battery
+    let fill_pad = 2.0;
+    let max_fill_w = icon_w - fill_pad * 2.0;
+    let fill_w = (max_fill_w * frac).max(1.0);
+    rounded_rect(cr, icon_x + fill_pad, icon_y + fill_pad, fill_w, icon_h - fill_pad * 2.0, 1.2);
+    cr.set_source_rgba(rv, gv, bv, 0.90);
+    let _ = cr.fill();
+
+    // If charging, overlay a sharp mini lightning bolt across the battery
+    if charging {
+        let (br, bg, bb) = crate::ui::brand_theme::accent().bright;
+        cr.set_source_rgba(br, bg, bb, 1.0);
+        let bx = cx;
+        let by = icon_y + icon_h / 2.0;
+        cr.move_to(bx + 1.2, by - 4.5);
+        cr.line_to(bx - 2.5, by + 0.5);
+        cr.line_to(bx, by + 0.5);
+        cr.line_to(bx - 1.2, by + 4.5);
+        cr.line_to(bx + 2.5, by - 0.5);
+        cr.line_to(bx, by - 0.5);
+        cr.close_path();
+        let _ = cr.fill();
+    }
+
+    // 5. Crisp percentage text
     if crate::ui::brand_theme::is_light_mode() {
         cr.set_source_rgb(0.06, 0.09, 0.16);
     } else {
         cr.set_source_rgb(1.0, 1.0, 1.0);
     }
     cr.select_font_face("-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Ubuntu', sans-serif", gtk4::cairo::FontSlant::Normal, gtk4::cairo::FontWeight::Bold);
-    cr.set_font_size(30.0);
+    cr.set_font_size(24.0);
     let txt = format!("{}%", pct);
     if let Ok(ext) = cr.text_extents(&txt) {
-        cr.move_to(cx - ext.width() / 2.0, cy + 4.0);
+        cr.move_to(cx - ext.width() / 2.0, cy + 10.0);
         let _ = cr.show_text(&txt);
     }
 
-    // Charging indicator
-    if charging {
-        cr.set_font_size(14.0);
-        let (r, g, b) = crate::ui::brand_theme::accent().bright;
-        cr.set_source_rgba(r, g, b, 0.95);
-        let ct = "⚡";
-        if let Ok(ext2) = cr.text_extents(ct) {
-            cr.move_to(cx - ext2.width() / 2.0, cy + 24.0);
-            let _ = cr.show_text(ct);
-        }
+    // 6. Status micro-badge text below percentage
+    cr.set_font_size(9.0);
+    let (status_text, (sr, sg, sb)) = if charging {
+        ("CHARGING", crate::ui::brand_theme::accent().bright)
+    } else if pct >= 98 {
+        ("FULLY CHARGED", (0.24, 0.78, 0.45))
+    } else if pct <= 20 {
+        ("LOW BATTERY", (0.93, 0.26, 0.22))
+    } else {
+        ("DISCHARGING", (0.62, 0.68, 0.75))
+    };
+    cr.set_source_rgb(sr, sg, sb);
+    if let Ok(ext) = cr.text_extents(status_text) {
+        cr.move_to(cx - ext.width() / 2.0, cy + 24.0);
+        let _ = cr.show_text(status_text);
     }
+}
+
+fn rounded_rect(cr: &gtk4::cairo::Context, x: f64, y: f64, w: f64, h: f64, r: f64) {
+    let r = r.min(w / 2.0).min(h / 2.0);
+    cr.new_sub_path();
+    cr.arc(x + w - r, y + r, r, -PI / 2.0, 0.0);
+    cr.arc(x + w - r, y + h - r, r, 0.0, PI / 2.0);
+    cr.arc(x + r, y + h - r, r, PI / 2.0, PI);
+    cr.arc(x + r, y + r, r, PI, 3.0 * PI / 2.0);
+    cr.close_path();
 }
 
 fn draw_charge_graph(cr: &gtk4::cairo::Context, w: f64, h: f64, history: &VecDeque<f64>) {

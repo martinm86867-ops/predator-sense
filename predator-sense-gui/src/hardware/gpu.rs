@@ -87,7 +87,7 @@ pub fn live_data_state() -> GpuLiveState {
 // `nvidia-smi` is a fork+exec. Cache one comprehensive result so Dashboard,
 // sensors, GPU and Usage all share a single invocation per refresh window.
 static CACHE: Mutex<Option<(Instant, GpuMetrics)>> = Mutex::new(None);
-const TTL: Duration = Duration::from_millis(1800);
+const TTL: Duration = Duration::from_millis(3000);
 static REFRESHING: AtomicBool = AtomicBool::new(false);
 static QUERY_LOCK: Mutex<()> = Mutex::new(());
 

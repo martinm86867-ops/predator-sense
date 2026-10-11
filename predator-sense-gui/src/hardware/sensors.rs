@@ -1,4 +1,6 @@
 use std::fs;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use crate::hardware::hwmon;
 
@@ -29,7 +31,25 @@ pub struct GpuInfo {
     pub power_watts: Option<f64>,
 }
 
+static SENSOR_CACHE: Mutex<Option<(Instant, SensorData)>> = Mutex::new(None);
+const SENSOR_TTL: Duration = Duration::from_millis(1200);
+
 pub fn read_all_sensors() -> SensorData {
+    if let Ok(guard) = SENSOR_CACHE.lock() {
+        if let Some((t, ref data)) = *guard {
+            if t.elapsed() < SENSOR_TTL {
+                return data.clone();
+            }
+        }
+    }
+    let data = read_all_sensors_fresh();
+    if let Ok(mut guard) = SENSOR_CACHE.lock() {
+        *guard = Some((Instant::now(), data.clone()));
+    }
+    data
+}
+
+fn read_all_sensors_fresh() -> SensorData {
     let gpu_info = read_nvidia_gpu_info();
     let gpu_temp = gpu_info.temp.or_else(|| {
         // When discrete NVIDIA GPU is suspended or in hardware reset lock,
@@ -54,14 +74,21 @@ pub fn read_all_sensors() -> SensorData {
 }
 
 fn read_cpu_model() -> String {
-    if let Ok(c) = fs::read_to_string("/proc/cpuinfo") {
-        for l in c.lines() {
-            if l.starts_with("model name") {
-                if let Some(n) = l.split(':').nth(1) { return n.trim().to_string(); }
+    static CACHED_CPU: OnceLock<String> = OnceLock::new();
+    CACHED_CPU
+        .get_or_init(|| {
+            if let Ok(c) = fs::read_to_string("/proc/cpuinfo") {
+                for l in c.lines() {
+                    if l.starts_with("model name") {
+                        if let Some(n) = l.split(':').nth(1) {
+                            return n.trim().to_string();
+                        }
+                    }
+                }
             }
-        }
-    }
-    "Unknown CPU".into()
+            "Unknown CPU".into()
+        })
+        .clone()
 }
 
 fn read_cpu_frequency() -> Option<u32> {
